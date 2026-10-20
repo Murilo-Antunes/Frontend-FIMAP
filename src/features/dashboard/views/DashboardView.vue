@@ -1,12 +1,6 @@
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
-
-function voltarLogin() {
-  router.push('/login')
-}
 </script>
 
 <template>
@@ -20,13 +14,12 @@ function voltarLogin() {
         Roteamento funcionando!
       </p>
 
-      <button
-        type="button"
-        class="rounded-lg bg-emerald-500 px-6 py-3 font-semibold text-white transition hover:bg-emerald-600"
-        @click="voltarLogin"
+      <RouterLink
+      :to="{ name: 'login' }"
+      class="text-center text-sm text-neutral-600 hover:text-black hover:underline"
       >
-        Voltar para o login
-      </button>
+        voltar ao login
+    </RouterLink>
     </section>
   </main>
 </template>
