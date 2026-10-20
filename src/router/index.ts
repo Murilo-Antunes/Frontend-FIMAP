@@ -11,7 +11,6 @@ declare module 'vue-router' {
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: { name: 'dashboard' } },
     {
       path: '/login',
       name: 'login',
@@ -31,10 +30,19 @@ export const router = createRouter({
       meta: { guestOnly: true },
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/features/dashboard/views/DashboardView.vue'),
+      // Área autenticada: header, menu lateral e footer ficam no MainLayout.
+      // O meta do pai vale para todas as rotas filhas.
+      path: '/',
+      component: () => import('@/layouts/MainLayout.vue'),
       meta: { requiresAuth: true },
+      children: [
+        { path: '', redirect: { name: 'dashboard' } },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/features/dashboard/views/DashboardView.vue'),
+        },
+      ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
   ],
