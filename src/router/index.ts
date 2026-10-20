@@ -1,27 +1,43 @@
-
 import { createRouter, createWebHistory } from 'vue-router'
+import { authGuard } from './guards/auth.guard'
 
-import LoginView from '../features/auth/views/LoginView.vue'
-import DashboardView from '../features/dashboard/views/DashboardView.vue'
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    guestOnly?: boolean
+  }
+}
 
-const router = createRouter({
+export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    {
-      path: '/',
-      redirect: '/login',
-    },
+    { path: '/', redirect: { name: 'dashboard' } },
     {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: () => import('@/features/auth/views/LoginView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/cadastro',
+      name: 'register',
+      component: () => import('@/features/auth/views/RegisterView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/recuperar-senha',
+      name: 'forgot-password',
+      component: () => import('@/features/auth/views/ForgotPasswordView.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: DashboardView,
+      component: () => import('@/features/dashboard/views/DashboardView.vue'),
+      meta: { requiresAuth: true },
     },
+    { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
   ],
 })
 
-export default router
+router.beforeEach(authGuard)

@@ -1,59 +1,112 @@
-
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowRight, Lock, User } from 'lucide-vue-next'
+import AuthLayout from '@/layouts/AuthLayout.vue'
+import TextField from '@/components/shared/TextField.vue'
+import SubmitButton from '@/components/shared/SubmitButton.vue'
+import FormAlert from '@/components/shared/FormAlert.vue'
+import { useZodForm } from '@/composables/useZodForm'
+import { toApiError } from '@/lib/api/types/api-error'
+import { useAuthStore } from '@/stores/auth.store'
+import { loginSchema } from '../schemas/auth.schemas'
 
+const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
-const email = ref('')
-const senha = ref('')
+const form = reactive({ identificador: '', senha: '' })
+const { errors, validate, clearError, setServerErrors } = useZodForm(loginSchema)
+const submitting = ref(false)
+const formError = ref('')
 
-function fazerLogin() {
-  router.push('/dashboard')
+// Mensagens vindas de outros fluxos (cadastro e redefinição de senha)
+const notice = computed(() => {
+  if (route.query.registered) return 'Conta criada com sucesso! Faça login para continuar.'
+  if (route.query.reset) return 'Senha redefinida com sucesso! Faça login com a nova senha.'
+  return ''
+})
+
+/** Aceita apenas caminhos internos para evitar redirecionamento para sites externos. */
+function redirectTarget(): string {
+  const redirect = route.query.redirect
+  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    ? redirect
+    : '/dashboard'
+}
+
+async function onSubmit() {
+  formError.value = ''
+  const data = validate(form)
+  if (!data) return
+
+  submitting.value = true
+  try {
+    await auth.login(data)
+    await router.replace(redirectTarget())
+  } catch (error) {
+    const apiError = toApiError(error)
+    formError.value = apiError.mensagem
+    setServerErrors(apiError.campos)
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-slate-950 p-6">
+  <AuthLayout title="Bem-vindo(a)" subtitle="Acesse sua conta para continuar">
     <form
-      class="w-full max-w-md space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-8"
-      @submit.prevent="fazerLogin"
+      class="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
+      novalidate
+      @submit.prevent="onSubmit"
     >
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-white">FIMAP</h1>
-        <p class="mt-2 text-slate-400">Entre na sua conta</p>
-      </div>
+      <FormAlert v-if="notice" variant="success">{{ notice }}</FormAlert>
+      <FormAlert v-if="formError">{{ formError }}</FormAlert>
 
-      <div class="space-y-2">
-        <label for="email" class="text-sm text-slate-200">E-mail</label>
-        <input
-          id="email"
-          v-model="email"
-          type="email"
-          placeholder="seu@email.com"
-          required
-          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
-        />
-      </div>
-
-      <div class="space-y-2">
-        <label for="senha" class="text-sm text-slate-200">Senha</label>
-        <input
-          id="senha"
-          v-model="senha"
-          type="password"
-          placeholder="Digite sua senha"
-          required
-          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-500"
-        />
-      </div>
-
-      <button
-        type="submit"
-        class="w-full rounded-lg bg-emerald-500 px-4 py-3 font-semibold text-white transition hover:bg-emerald-600"
+      <TextField
+        v-model="form.identificador"
+        label="Nome de usuário ou E-mail"
+        placeholder="Seu usuário"
+        autocomplete="username"
+        :error="errors.identificador"
+        @update:model-value="clearError('identificador')"
       >
-        Entrar
-      </button>
+        <template #icon><User :size="20" /></template>
+      </TextField>
+
+      <div class="flex flex-col gap-2">
+        <TextField
+          v-model="form.senha"
+          label="Senha"
+          type="password"
+          placeholder="Sua senha"
+          autocomplete="current-password"
+          revealable
+          :error="errors.senha"
+          @update:model-value="clearError('senha')"
+        >
+          <template #icon><Lock :size="20" /></template>
+        </TextField>
+
+        <RouterLink
+          :to="{ name: 'forgot-password' }"
+          class="w-fit text-xs font-medium text-neutral-900 hover:underline"
+        >
+          Esqueci minha senha
+        </RouterLink>
+      </div>
+
+      <SubmitButton :loading="submitting">
+        Entrar <ArrowRight :size="18" aria-hidden="true" />
+      </SubmitButton>
+
+      <p class="border-t border-neutral-200 pt-5 text-center text-sm text-neutral-600">
+        Não tem uma conta?
+        <RouterLink :to="{ name: 'register' }" class="font-medium text-black hover:underline">
+          Cadastre-se
+        </RouterLink>
+      </p>
     </form>
-  </main>
+  </AuthLayout>
 </template>
