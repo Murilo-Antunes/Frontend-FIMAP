@@ -77,7 +77,7 @@ const terrains: Terrain[] = [
   },
   {
     x: 40,
-    y: 90,
+    y: 20,
     radiusX: 220,
     radiusY: 185,
     rotation: 0.3,
@@ -86,12 +86,12 @@ const terrains: Terrain[] = [
   },
   {
     x: 100,
-    y: 500,
+    y: 580,
     radiusX: 230,
     radiusY: 200,
     rotation: 0,
     irregularity: 0.19,
-    phase: 3.2,
+    phase: 2,
   },
 ]
 

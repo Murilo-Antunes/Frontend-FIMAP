@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ArrowLeft } from 'lucide-vue-next'
 import BrandLogo from '@/components/shared/BrandLogo.vue'
 import TopographicBackground from '@/components/shared/TopographicBackground.vue'
 
