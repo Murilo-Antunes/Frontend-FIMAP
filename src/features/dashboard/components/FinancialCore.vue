@@ -53,7 +53,10 @@ const { mask } = useHiddenValues()
 
         <div class="shrink-0 text-right">
           <p class="text-sm font-semibold">
-            {{ mask(formatCurrency(item.valor)) }}{{ item.valorSufixo ?? '' }}
+            <template v-if="item.valor !== null">
+              {{ mask(formatCurrency(item.valor)) }}{{ item.valorSufixo ?? '' }}
+            </template>
+            <template v-else>—</template>
           </p>
           <p
             class="text-[11px]"

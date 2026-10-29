@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { Clock, CreditCard, Eye, EyeOff, TrendingDown, TrendingUp } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Clock, CreditCard, Eye, EyeOff, RefreshCw, TrendingDown, TrendingUp } from 'lucide-vue-next'
 import ErrorState from '@/components/shared/ErrorState.vue'
 import { useHiddenValues } from '@/composables/useHiddenValues'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -12,22 +12,21 @@ import FinancialCore from '../components/FinancialCore.vue'
 import IncomeExpenseChart from '../components/IncomeExpenseChart.vue'
 import RecentTransactions from '../components/RecentTransactions.vue'
 import SummaryCard from '../components/SummaryCard.vue'
-import { dashboardService } from '../services/dashboard.service'
+import { dashboardService, FinanceItemNotConfiguredError } from '../services/dashboard.service'
 import type { DashboardOverview, EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
 
 const auth = useAuthStore()
 const { hidden, toggle } = useHiddenValues()
 
-const status = ref<'loading' | 'ready' | 'error'>('loading')
+const status = ref<'loading' | 'syncing' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const overview = ref<DashboardOverview | null>(null)
 
-const period = ref<EvolutionPeriod>('semana')
+const period = ref<EvolutionPeriod>('mes')
 const evolution = ref<EvolutionPoint[]>([])
 const evolutionLoading = ref(false)
 const evolutionError = ref(false)
 
-// Evita que uma resposta antiga sobrescreva a de um período escolhido depois
 let evolutionRequest = 0
 
 async function loadEvolution(selected: EvolutionPeriod) {
@@ -36,8 +35,10 @@ async function loadEvolution(selected: EvolutionPeriod) {
   evolutionLoading.value = true
   evolutionError.value = false
   try {
-    const data = await dashboardService.getEvolution(selected)
-    if (request === evolutionRequest) evolution.value = data
+    const points = await dashboardService.getEvolution(selected)
+    if (request !== evolutionRequest) return
+    if (points) evolution.value = points
+    else evolutionError.value = true // API sincronizando: sem dados agora
   } catch {
     if (request === evolutionRequest) evolutionError.value = true
   } finally {
@@ -45,24 +46,69 @@ async function loadEvolution(selected: EvolutionPeriod) {
   }
 }
 
+const POLL_INTERVAL_MS = 5_000
+const POLL_MAX_ATTEMPTS = 12
+let pollTimer: ReturnType<typeof setTimeout> | undefined
+let pollAttempts = 0
+
+function applyOverview(next: DashboardOverview) {
+  overview.value = next
+  if (!evolutionLoading.value) evolution.value = next.evolution
+  status.value = 'ready'
+}
+
+function schedulePoll() {
+  clearTimeout(pollTimer)
+  const waiting = status.value === 'syncing' || overview.value?.updating === true
+  if (!waiting) return
+
+  if (pollAttempts >= POLL_MAX_ATTEMPTS) {
+    if (status.value === 'syncing') {
+      errorMessage.value = 'A sincronização está demorando. Tente novamente em instantes.'
+      status.value = 'error'
+    }
+    return
+  }
+
+  pollAttempts += 1
+  pollTimer = setTimeout(async () => {
+    try {
+      const next = await dashboardService.getOverview(period.value)
+      if (next) applyOverview(next)
+    } catch {
+    }
+    schedulePoll()
+  }, POLL_INTERVAL_MS)
+}
+
 async function loadDashboard() {
+  clearTimeout(pollTimer)
+  pollAttempts = 0
   status.value = 'loading'
   errorMessage.value = ''
+  evolutionRequest += 1 
+  evolutionLoading.value = false
+  evolutionError.value = false
   try {
-    overview.value = await dashboardService.getOverview()
-    status.value = 'ready'
-    await loadEvolution(period.value)
+    const loaded = await dashboardService.getOverview(period.value)
+    if (loaded) applyOverview(loaded)
+    else status.value = 'syncing'
+    schedulePoll()
   } catch (error) {
-    errorMessage.value = toApiError(error).mensagem
+    errorMessage.value =
+      error instanceof FinanceItemNotConfiguredError ? error.message : toApiError(error).mensagem
     status.value = 'error'
   }
 }
 
-/** null = sem base de comparação (ex.: ainda não existe o mês anterior). */
 const percent = (value: number | null, signed = false) =>
   value === null ? '—' : formatPercent(value, { signed })
 
+const cards = computed(() => overview.value?.summary.limite_cartoes)
+const hasCardLimit = computed(() => (cards.value?.limite_total ?? 0) > 0)
+
 onMounted(loadDashboard)
+onBeforeUnmount(() => clearTimeout(pollTimer))
 </script>
 
 <template>
@@ -87,7 +133,29 @@ onMounted(loadDashboard)
       </button>
     </header>
 
+    <p
+      v-if="overview?.updating && status === 'ready'"
+      class="mb-4 flex items-center gap-2 text-xs text-neutral-500"
+      role="status"
+    >
+      <RefreshCw :size="14" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      Atualizando dados das suas instituições…
+    </p>
+
     <DashboardSkeleton v-if="status === 'loading'" />
+
+    <div
+      v-else-if="status === 'syncing'"
+      class="flex flex-col items-center gap-3 rounded-3xl border border-neutral-100 bg-white p-12 text-center shadow-sm"
+      role="status"
+    >
+      <RefreshCw :size="28" class="animate-spin text-neutral-500 motion-reduce:animate-none" aria-hidden="true" />
+      <h2 class="text-lg font-semibold">Sincronizando seus dados financeiros</h2>
+      <p class="max-w-md text-sm text-neutral-500">
+        Estamos buscando as informações das suas instituições. Isso pode levar alguns segundos e a tela
+        atualiza sozinha.
+      </p>
+    </div>
 
     <ErrorState v-else-if="status === 'error'" :message="errorMessage" @retry="loadDashboard" />
 
@@ -121,20 +189,21 @@ onMounted(loadDashboard)
           :progress="overview.summary.despesas.progresso"
         />
         <SummaryCard
-          label="Limite cartões"
+          v-if="cards"
+          :label="hasCardLimit ? 'Limite cartões' : 'Fatura cartões'"
           :icon="CreditCard"
-          :value="formatNumber(overview.summary.limite_cartoes.disponivel)"
-          footer-label="Disponível"
-          :footer-value="percent(overview.summary.limite_cartoes.percentual_disponivel)"
-          :progress="overview.summary.limite_cartoes.percentual_disponivel"
+          :value="formatNumber(hasCardLimit ? cards.disponivel : cards.fatura_aberta)"
+          :footer-label="hasCardLimit ? 'Disponível' : 'Limite não informado'"
+          :footer-value="hasCardLimit ? percent(cards.percentual_disponivel) : '—'"
+          :progress="hasCardLimit ? (cards.percentual_disponivel ?? 0) : 0"
         />
         <SummaryCard
           label="Investido"
           :icon="Clock"
           :value="formatNumber(overview.summary.investido.valor)"
-          footer-label="Progresso das metas"
-          :footer-value="percent(overview.summary.investido.percentual_meta)"
-          :progress="overview.summary.investido.percentual_meta ?? 0"
+          footer-label="Do patrimônio"
+          :footer-value="percent(overview.summary.investido.participacao_percentual)"
+          :progress="overview.summary.investido.participacao_percentual ?? 0"
         />
       </section>
 

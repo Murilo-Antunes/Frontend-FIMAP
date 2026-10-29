@@ -7,12 +7,17 @@ import { useHiddenValues } from '@/composables/useHiddenValues'
 import { formatCurrency } from '@/lib/format'
 import type { EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
 
-const props = defineProps<{
-  data: EvolutionPoint[]
-  period: EvolutionPeriod
-  loading?: boolean
-  error?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    data: EvolutionPoint[]
+    period: EvolutionPeriod
+    /** Períodos que a API consegue entregar; os demais aparecem desabilitados. */
+    availablePeriods?: EvolutionPeriod[]
+    loading?: boolean
+    error?: boolean
+  }>(),
+  { availablePeriods: () => ['dia', 'semana', 'mes'] },
+)
 
 const emit = defineEmits<{
   'update:period': [period: EvolutionPeriod]
@@ -24,6 +29,12 @@ const PERIODS: { value: EvolutionPeriod; label: string }[] = [
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mês' },
 ]
+
+const TITLES: Record<EvolutionPeriod, string> = {
+  dia: 'Evolução Diária',
+  semana: 'Evolução Semanal',
+  mes: 'Evolução Mensal',
+}
 
 const { mask } = useHiddenValues()
 const reducedMotion = usePreferredReducedMotion()
@@ -77,7 +88,7 @@ const options = computed<ApexOptions>(() => ({
   <section class="rounded-3xl border border-neutral-100 bg-white p-6 shadow-sm">
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Evolução Mensal</h2>
+        <h2 class="text-lg font-semibold">{{ TITLES[period] }}</h2>
         <p class="text-xs text-neutral-500">Receitas vs Despesas</p>
       </div>
 
@@ -87,8 +98,16 @@ const options = computed<ApexOptions>(() => ({
           :key="item.value"
           type="button"
           class="rounded-full px-3.5 py-1.5 text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-black"
-          :class="period === item.value ? 'bg-black text-white' : 'text-neutral-500 hover:text-neutral-900'"
+          :class="
+            period === item.value
+              ? 'bg-black text-white'
+              : availablePeriods.includes(item.value)
+                ? 'text-neutral-500 hover:text-neutral-900'
+                : 'cursor-not-allowed text-neutral-300'
+          "
           :aria-pressed="period === item.value"
+          :disabled="!availablePeriods.includes(item.value)"
+          :title="availablePeriods.includes(item.value) ? undefined : 'Indisponível por enquanto'"
           @click="emit('update:period', item.value)"
         >
           {{ item.label }}
@@ -113,6 +132,13 @@ const options = computed<ApexOptions>(() => ({
       </div>
 
       <div v-else-if="loading" class="h-[260px] animate-pulse rounded-2xl bg-neutral-100" />
+
+      <p
+        v-else-if="data.length === 0"
+        class="flex h-[260px] items-center justify-center text-sm text-neutral-500"
+      >
+        Ainda não há movimentações para exibir.
+      </p>
 
       <VueApexCharts v-else type="area" height="260" :options="options" :series="series" />
     </div>

@@ -1,54 +1,45 @@
 /**
- * Tipos do dashboard. Os `*Api*`/`Dashboard*` em snake_case espelham a resposta de
- * GET /dashboard e GET /dashboard/evolucao. `CoreItem` é o modelo de exibição (camelCase).
+ * Modelos de exibição do dashboard (camelCase/snake_case já prontos para os componentes).
+ * Eles são montados em `services/dashboard.mapper.ts` a partir da resposta da API financeira
+ * (ver `openfinance.types.ts`).
  *
- * Valores `null` significam "sem base de comparação" (ex.: não há mês anterior, não há metas).
+ * Valores `null` significam "sem base de comparação/dado" (ex.: não há mês anterior).
  */
 
 export interface DashboardSummary {
   patrimonio: {
+    /** Patrimônio líquido (contas + investimentos - dívidas - fatura aberta). */
     total: number
-    /** Saldo líquido do mês (receitas - despesas). */
-    variacao_mes: number
+    /**
+     * Variação real do patrimônio no mês (atual - início do mês). `null` = indisponível: exige
+     * histórico/saldo anterior que a API ainda não fornece.
+     */
+    variacao_mes: number | null
     variacao_mes_percentual: number | null
+    /** Entradas - saídas do mês. É movimentação líquida, não variação patrimonial. */
+    movimentacao_liquida_mes: number
     contas_ativas: number
   }
   receita_mensal: { valor: number; variacao_percentual: number | null; progresso: number }
   despesas: { valor: number; variacao_percentual: number | null; progresso: number }
-  limite_cartoes: { disponivel: number; percentual_disponivel: number }
-  investido: { valor: number; percentual_meta: number | null }
-}
-
-export interface DashboardCoreData {
-  cartoes: {
-    total_faturas_abertas: number
-    quantidade_cartoes: number
-    dias_para_fechamento: number | null
+  /** `limite_total` 0 = a instituição não informou limite: o card mostra a fatura em aberto. */
+  limite_cartoes: {
+    limite_total: number
+    disponivel: number
+    percentual_disponivel: number | null
+    fatura_aberta: number
   }
-  contas: {
-    saldo_total: number
-    instituicoes: string[]
-    conexoes_total: number
-    todas_sincronizadas: boolean
-  }
-  carteira: {
-    valor_total: number
-    tipos_ativos: string[]
-    quantidade_ativos: number
-    rentabilidade_percentual: number | null
-  }
-  emprestimos: {
-    parcela_mensal_total: number
-    contratos_ativos: number
-    parcelas_pagas: number | null
-    parcelas_total: number | null
-    em_dia: boolean
+  investido: {
+    valor: number
+    quantidade: number
+    /** Parcela do patrimônio bruto (contas + investimentos) aplicada em investimentos. */
+    participacao_percentual: number | null
   }
 }
 
-/** Transação já pronta para exibição (a API devolve as 5 mais recentes). */
+/** Transação pronta para exibição. */
 export interface DashboardTransaction {
-  id: number
+  id: string
   descricao: string
   /** ISO 8601 */
   data: string
@@ -56,16 +47,11 @@ export interface DashboardTransaction {
   /** Sempre positivo; o sinal vem de `tipo`. */
   valor: number
   categoria: string
-  /** Nome da conta usada (ex.: "Conta Nubank"). */
+  /** Conta/cartão usado, com a instituição quando informada (ex.: "Nubank · Conta Corrente"). */
   conta: string | null
 }
 
-export interface DashboardApiResponse {
-  resumo: DashboardSummary
-  nucleo: DashboardCoreData
-  transacoes: DashboardTransaction[]
-}
-
+/** Períodos que o gráfico sabe exibir. A API atual só entrega `mes`. */
 export type EvolutionPeriod = 'dia' | 'semana' | 'mes'
 
 export interface EvolutionPoint {
@@ -74,13 +60,6 @@ export interface EvolutionPoint {
   despesas: number
 }
 
-export interface EvolutionApiResponse {
-  periodo: EvolutionPeriod
-  pontos: EvolutionPoint[]
-}
-
-// ---- Modelos de exibição ------------------------------------------------------------------
-
 export type CoreItemType = 'cartoes' | 'contas' | 'carteira' | 'emprestimos'
 
 export interface CoreItem {
@@ -88,7 +67,8 @@ export interface CoreItem {
   tipo: CoreItemType
   titulo: string
   descricao: string
-  valor: number
+  /** `null` = indisponível (a API não informa), exibido como "—". */
+  valor: number | null
   /** Texto após o valor, ex.: "/mês". */
   valorSufixo?: string
   detalhe: string
@@ -96,7 +76,10 @@ export interface CoreItem {
 }
 
 export interface DashboardOverview {
+  /** A API ainda está sincronizando: os números podem mudar em instantes. */
+  updating: boolean
   summary: DashboardSummary
   core: CoreItem[]
   transactions: DashboardTransaction[]
+  evolution: EvolutionPoint[]
 }

@@ -36,7 +36,8 @@ const { mask } = useHiddenValues()
     <footer
       class="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 text-sm"
     >
-      <p class="flex items-center gap-2">
+      <!-- Variação real só existe com histórico de patrimônio; sem ele, mostra a movimentação líquida -->
+      <p v-if="patrimonio.variacao_mes !== null" class="flex items-center gap-2">
         <span class="flex size-5 items-center justify-center rounded-md bg-white/15">
           <ArrowDownRight v-if="patrimonio.variacao_mes < 0" :size="12" aria-hidden="true" />
           <ArrowUpRight v-else :size="12" aria-hidden="true" />
@@ -47,6 +48,16 @@ const { mask } = useHiddenValues()
             ({{ formatPercent(patrimonio.variacao_mes_percentual, { signed: true }) }})
           </template>
           este mês
+        </span>
+      </p>
+      <p v-else class="flex items-center gap-2" title="Entradas menos saídas do mês. A variação do patrimônio ainda não está disponível.">
+        <span class="flex size-5 items-center justify-center rounded-md bg-white/15">
+          <ArrowDownRight v-if="patrimonio.movimentacao_liquida_mes < 0" :size="12" aria-hidden="true" />
+          <ArrowUpRight v-else :size="12" aria-hidden="true" />
+        </span>
+        <span>
+          {{ mask(formatSignedCurrency(patrimonio.movimentacao_liquida_mes)) }}
+          movimentação líquida no mês
         </span>
       </p>
       <p class="text-neutral-400">

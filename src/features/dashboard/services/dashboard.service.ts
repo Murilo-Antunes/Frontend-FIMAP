@@ -1,28 +1,34 @@
-import { http } from '@/lib/api/http'
-import type {
-  DashboardApiResponse,
-  DashboardOverview,
-  EvolutionApiResponse,
-  EvolutionPeriod,
-  EvolutionPoint,
-} from '../types/dashboard.types'
-import { buildCoreItems } from './dashboard.mapper'
+import { env } from '@/config/env'
+import { financeHttp } from '@/lib/api/finance-http'
+import type { DashboardOverview, EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
+import { hasSummaryData, type ResumoApiResponse } from '../types/openfinance.types'
+import { buildEvolution, buildOverview } from './dashboard.mapper'
 
-/** Comunicação com GET /dashboard e GET /dashboard/evolucao. Erros do Axios sobem para a view. */
+/** Erro de configuração: o dashboard não sabe qual conexão financeira consultar. */
+export class FinanceItemNotConfiguredError extends Error {
+  constructor() {
+    super('Conexão financeira não configurada. Defina VITE_FINANCE_ITEM_ID no arquivo .env.')
+    this.name = 'FinanceItemNotConfiguredError'
+  }
+}
+
+async function fetchSummary(period: EvolutionPeriod, signal?: AbortSignal): Promise<ResumoApiResponse> {
+  if (!env.financeItemId) throw new FinanceItemNotConfiguredError()
+  const { data } = await financeHttp.get<ResumoApiResponse>('/v1/openfinance/financeiro/resumo', {
+    params: { itemId: env.financeItemId, periodo: period },
+    signal,
+  })
+  return data
+}
+
 export const dashboardService = {
-  async getOverview(): Promise<DashboardOverview> {
-    const { data } = await http.get<DashboardApiResponse>('/dashboard')
-    return {
-      summary: data.resumo,
-      core: buildCoreItems(data.nucleo),
-      transactions: data.transacoes,
-    }
+  async getOverview(period: EvolutionPeriod = 'mes', signal?: AbortSignal): Promise<DashboardOverview | null> {
+    const data = await fetchSummary(period, signal)
+    return hasSummaryData(data) ? buildOverview(data) : null
   },
 
-  async getEvolution(period: EvolutionPeriod): Promise<EvolutionPoint[]> {
-    const { data } = await http.get<EvolutionApiResponse>('/dashboard/evolucao', {
-      params: { periodo: period },
-    })
-    return data.pontos
+  async getEvolution(period: EvolutionPeriod, signal?: AbortSignal): Promise<EvolutionPoint[] | null> {
+    const data = await fetchSummary(period, signal)
+    return hasSummaryData(data) ? buildEvolution(data) : null
   },
 }
