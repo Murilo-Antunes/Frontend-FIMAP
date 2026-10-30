@@ -23,7 +23,10 @@ export function toApiError(error: unknown): ApiError {
       return {
         status: null,
         codigo: 'ERRO_DE_REDE',
-        mensagem: 'Não foi possível conectar ao servidor. Verifique sua conexão.',
+        // Em desenvolvimento, mostra qual endereço falhou (ajuda a achar API desligada ou CORS)
+        mensagem: `Não foi possível conectar ao servidor${
+          import.meta.env.DEV && error.config?.baseURL ? ` (${error.config.baseURL})` : ''
+        }. Verifique sua conexão.`,
       }
     }
     const body = error.response.data

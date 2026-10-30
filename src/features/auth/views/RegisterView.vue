@@ -9,10 +9,12 @@ import FormAlert from '@/components/shared/FormAlert.vue'
 import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
 import { formatCpf, onlyDigits } from '@/lib/cpf'
+import { useAuthStore } from '@/stores/auth.store'
 import { authService } from '../services/auth.service'
 import { registerSchema } from '../schemas/auth.schemas'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const form = reactive({ nome: '', cpf: '', email: '', username: '', senha: '' })
 const { errors, validate, clearError, setServerErrors } = useZodForm(registerSchema)
@@ -33,11 +35,21 @@ async function onSubmit() {
   try {
     // A API recebe o CPF apenas com dígitos
     await authService.register({ ...data, cpf: onlyDigits(data.cpf) })
-    await router.replace({ name: 'login', query: { registered: '1' } })
   } catch (error) {
     const apiError = toApiError(error)
     formError.value = apiError.campos ? '' : apiError.mensagem
     setServerErrors(apiError.campos)
+    submitting.value = false
+    return
+  }
+
+  // Conta criada: entra automaticamente e segue para a conexão do banco.
+  // Se o login automático falhar, a pessoa vai para o login com o aviso de conta criada.
+  try {
+    await auth.login({ identificador: data.username, senha: data.senha })
+    await router.replace({ name: 'connect-bank' })
+  } catch {
+    await router.replace({ name: 'login', query: { registered: '1' } })
   } finally {
     submitting.value = false
   }

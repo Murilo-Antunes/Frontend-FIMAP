@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Clock, CreditCard, Eye, EyeOff, RefreshCw, TrendingDown, TrendingUp } from 'lucide-vue-next'
 import ErrorState from '@/components/shared/ErrorState.vue'
 import { useHiddenValues } from '@/composables/useHiddenValues'
 import { toApiError } from '@/lib/api/types/api-error'
 import { formatNumber, formatPercent } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth.store'
+import { useConnectionStore } from '@/stores/connection.store'
+import { NoBankConnectionError } from '@/features/connection/errors/no-bank-connection.error'
 import BalanceOverview from '../components/BalanceOverview.vue'
 import DashboardSkeleton from '../components/DashboardSkeleton.vue'
 import FinancialCore from '../components/FinancialCore.vue'
 import IncomeExpenseChart from '../components/IncomeExpenseChart.vue'
 import RecentTransactions from '../components/RecentTransactions.vue'
 import SummaryCard from '../components/SummaryCard.vue'
-import { dashboardService, FinanceItemNotConfiguredError } from '../services/dashboard.service'
+import { dashboardService } from '../services/dashboard.service'
 import type { DashboardOverview, EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
 
+const router = useRouter()
 const auth = useAuthStore()
+const connection = useConnectionStore()
 const { hidden, toggle } = useHiddenValues()
 
 const status = ref<'loading' | 'syncing' | 'ready' | 'error'>('loading')
@@ -27,6 +32,7 @@ const evolution = ref<EvolutionPoint[]>([])
 const evolutionLoading = ref(false)
 const evolutionError = ref(false)
 
+// Evita que uma resposta antiga sobrescreva a de um período escolhido depois
 let evolutionRequest = 0
 
 async function loadEvolution(selected: EvolutionPeriod) {
@@ -35,7 +41,7 @@ async function loadEvolution(selected: EvolutionPeriod) {
   evolutionLoading.value = true
   evolutionError.value = false
   try {
-    const points = await dashboardService.getEvolution(selected)
+    const points = await dashboardService.getEvolution(await connection.requireItemId(), selected)
     if (request !== evolutionRequest) return
     if (points) evolution.value = points
     else evolutionError.value = true // API sincronizando: sem dados agora
@@ -46,6 +52,8 @@ async function loadEvolution(selected: EvolutionPeriod) {
   }
 }
 
+// Enquanto a API sincroniza com as instituições (`atualizando: true`), rebusca em silêncio.
+// Sem dados ainda: tela de "sincronizando". Com dados parciais: aviso discreto no topo.
 const POLL_INTERVAL_MS = 5_000
 const POLL_MAX_ATTEMPTS = 12
 let pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -73,9 +81,10 @@ function schedulePoll() {
   pollAttempts += 1
   pollTimer = setTimeout(async () => {
     try {
-      const next = await dashboardService.getOverview(period.value)
+      const next = await dashboardService.getOverview(await connection.requireItemId(), period.value)
       if (next) applyOverview(next)
     } catch {
+      // mantém o que já está na tela; a próxima tentativa (se houver) corrige
     }
     schedulePoll()
   }, POLL_INTERVAL_MS)
@@ -86,24 +95,31 @@ async function loadDashboard() {
   pollAttempts = 0
   status.value = 'loading'
   errorMessage.value = ''
-  evolutionRequest += 1 
+  evolutionRequest += 1 // invalida troca de período em andamento
   evolutionLoading.value = false
   evolutionError.value = false
   try {
-    const loaded = await dashboardService.getOverview(period.value)
+    // Sem conta conectada (ou conexões ainda não carregadas): resolve antes de pedir os dados
+    const itemId = await connection.requireItemId()
+    const loaded = await dashboardService.getOverview(itemId, period.value)
     if (loaded) applyOverview(loaded)
     else status.value = 'syncing'
     schedulePoll()
   } catch (error) {
-    errorMessage.value =
-      error instanceof FinanceItemNotConfiguredError ? error.message : toApiError(error).mensagem
+    if (error instanceof NoBankConnectionError) {
+      await router.replace({ name: 'connect-bank' })
+      return
+    }
+    errorMessage.value = toApiError(error).mensagem
     status.value = 'error'
   }
 }
 
+/** null = sem base de comparação (ex.: ainda não existe o mês anterior). */
 const percent = (value: number | null, signed = false) =>
   value === null ? '—' : formatPercent(value, { signed })
 
+// Card de cartões: sem limite informado pela instituição, mostra a fatura em aberto
 const cards = computed(() => overview.value?.summary.limite_cartoes)
 const hasCardLimit = computed(() => (cards.value?.limite_total ?? 0) > 0)
 
