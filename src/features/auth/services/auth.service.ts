@@ -15,12 +15,13 @@ export const authService = {
   },
 
   async register(payload: RegisterPayload): Promise<Usuario> {
-    const { data } = await http.post<{ usuario: Usuario }>('/auth/register', payload)
+    const { data } = await http.post<{ usuario: Usuario }>('/v1/openfinance/usuario/criar-usuario', payload)
     return data.usuario
   },
 
   async me(): Promise<Usuario> {
-    const { data } = await http.get<{ usuario: Usuario }>('/auth/me')
+    
+    const { data } = await http.get<{ usuario: Usuario }>('/v1/openfinance/usuario/usuario/id/1')
     return data.usuario
   },
 
