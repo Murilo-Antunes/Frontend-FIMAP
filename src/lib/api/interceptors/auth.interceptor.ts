@@ -3,7 +3,7 @@ import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axio
 /** Rotas de auth que nunca devem disparar renovação de sessão (evita loop). */
 const SKIP_REFRESH_PREFIXES = [
   '/auth/login',
-  '/auth/register',
+  '/v1/openfinance/usuario/criar-usuario',
   '/auth/refresh',
   '/auth/logout',
   '/auth/forgot-password',

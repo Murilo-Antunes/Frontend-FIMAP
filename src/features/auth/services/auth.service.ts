@@ -129,7 +129,7 @@ export const authService = {
   async resetPassword(idUsuario: number, codigo: string, novaSenha: string): Promise<void> {
     const { data } = await http.post<ApiSuccessResponse>(`${BASE}/alterar/senha/${idUsuario}`, {
       codigo,
-      nova_senha: novaSenha,
+novaSenha,
     })
     if (!data?.sucesso) {
       throw new Error(data?.mensagem ?? 'Não foi possível redefinir a senha.')
