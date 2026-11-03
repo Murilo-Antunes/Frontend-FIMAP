@@ -4,8 +4,9 @@ import { isValidCpf } from '@/lib/cpf'
 const emailField = z.string().trim().toLowerCase().email('Informe um e-mail válido.')
 const passwordField = z.string().min(8, 'A senha deve ter no mínimo 8 caracteres.')
 
+/** Login: a nova API aceita apenas e-mail como identificador. */
 export const loginSchema = z.object({
-  identificador: z.string().trim().min(1, 'Informe seu usuário ou e-mail.'),
+  email: emailField,
   senha: z.string().min(1, 'Informe sua senha.'),
 })
 

@@ -1,4 +1,4 @@
-/** Usuário devolvido pela API (sem cpf nem senha_hash). */
+/** Usuário devolvido pelo login (POST /v1/openfinance/usuario/login). */
 export interface Usuario {
   id: number
   nome: string
@@ -8,15 +8,26 @@ export interface Usuario {
   nivel_total: number
   foto_perfil: string | null
   nome_exibicao: string
-  username_social: string
-  biografia_social: string
+  username_social: string | null
+  biografia_social: string | null
   localizacao_estado: string | null
   visibilidade: 'publico' | 'privado'
 }
 
-export interface LoginPayload {
+export interface DispositivoPayload {
+  nome: string
+  sistema_operacional: string
   identificador: string
+}
+
+export interface LoginPayload {
+  /** A nova API aceita apenas e-mail como identificador. */
+  email: string
   senha: string
+}
+
+export interface LoginPayloadWithDevice extends LoginPayload {
+  dispositivo: DispositivoPayload
 }
 
 export interface RegisterPayload {
@@ -27,14 +38,30 @@ export interface RegisterPayload {
   senha: string
 }
 
-export interface ForgotPasswordResponse {
+/** Resposta de POST /v1/openfinance/usuario/criar-usuario */
+export interface RegisterUserResponse {
+  sucesso: boolean
   mensagem: string
-  /** Presente apenas quando a API roda com DEV_EXPOSE_OTP=true. */
-  codigo_dev?: string
+  id_usuario: number
 }
 
-export interface ResetPasswordPayload {
-  email: string
-  reset_token: string
-  nova_senha: string
+/** Resposta de POST /v1/openfinance/usuario/login */
+export interface LoginResponse {
+  sucesso: boolean
+  mensagem: string
+  usuario: Usuario
+}
+
+/** Resposta genérica de sucesso/mensagem */
+export interface ApiSuccessResponse {
+  sucesso: boolean
+  mensagem: string
+}
+
+/** Resposta de POST /v1/openfinance/usuario/codigo-otp/senha (solicitação de reset por email) */
+export interface ForgotPasswordResponse {
+  sucesso: boolean
+  mensagem: string
+  /** Presente em DEV quando a API expõe o código diretamente. */
+  codigo_dev?: string
 }

@@ -11,7 +11,8 @@ import { forgotEmailSchema } from '../schemas/auth.schemas'
 defineProps<{ notice?: string }>()
 
 const emit = defineEmits<{
-  submitted: [email: string]
+  /** Emite o e-mail e o id_usuario obtido pela busca para os próximos passos. */
+  submitted: [value: { email: string; idUsuario: number }]
 }>()
 
 const email = ref('')
@@ -26,12 +27,14 @@ async function onSubmit() {
 
   submitting.value = true
   try {
-    const response = await authService.forgotPassword(data.email)
-    // Apenas em desenvolvimento: sem provedor de e-mail, o código chega na resposta da API mock.
-    if (import.meta.env.DEV && response.codigo_dev) {
-      console.info('[DEV] Código de verificação:', response.codigo_dev)
-    }
-    emit('submitted', data.email)
+    // Busca o usuário pelo email para obter o id_usuario
+    const idUsuario = await authService.getUserIdByEmail(data.email)
+    
+    // Solicita o envio do código OTP para o email
+    await authService.forgotPassword(idUsuario)
+
+    // Emite os dados para o próximo passo
+    emit('submitted', { email: data.email, idUsuario })
   } catch (error) {
     const apiError = toApiError(error)
     formError.value = apiError.campos ? '' : apiError.mensagem
@@ -60,7 +63,7 @@ async function onSubmit() {
       />
     </div>
 
-    <SubmitButton :loading="submitting">Confirma Email</SubmitButton>
+    <SubmitButton :loading="submitting">Confirmar Email</SubmitButton>
 
     <RouterLink
       :to="{ name: 'login' }"

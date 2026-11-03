@@ -33,6 +33,19 @@ export const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/redefinir-senha/:id',
+      name: 'reset-password',
+      component: () => import('@/features/auth/views/ResetPasswordView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      // Verificação OTP após o cadastro (?id=...&email=...).
+      // Não é guestOnly: o usuário ainda não está logado, mas a rota é transitória.
+      path: '/verificar-email',
+      name: 'verify-otp',
+      component: () => import('@/features/auth/views/VerifyOtpView.vue'),
+    },
+    {
       // Conexão do banco (Open Finance): exige login, mas não exige conexão prévia.
       path: '/conectar-banco',
       name: 'connect-bank',
@@ -41,7 +54,6 @@ export const router = createRouter({
     },
     {
       // Área autenticada: header, menu lateral e footer ficam no MainLayout.
-      // O meta do pai vale para todas as rotas filhas.
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
       meta: { requiresAuth: true, requiresConnection: true },
@@ -51,6 +63,7 @@ export const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('@/features/dashboard/views/DashboardView.vue'),
+          meta: { requiresAuth: true, requiresConnection: true },
         },
       ],
     },

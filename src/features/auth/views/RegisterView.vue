@@ -9,12 +9,10 @@ import FormAlert from '@/components/shared/FormAlert.vue'
 import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
 import { formatCpf, onlyDigits } from '@/lib/cpf'
-import { useAuthStore } from '@/stores/auth.store'
 import { authService } from '../services/auth.service'
 import { registerSchema } from '../schemas/auth.schemas'
 
 const router = useRouter()
-const auth = useAuthStore()
 
 const form = reactive({ nome: '', cpf: '', email: '', username: '', senha: '' })
 const { errors, validate, clearError, setServerErrors } = useZodForm(registerSchema)
@@ -33,23 +31,19 @@ async function onSubmit() {
 
   submitting.value = true
   try {
-    // A API recebe o CPF apenas com dígitos
-    await authService.register({ ...data, cpf: onlyDigits(data.cpf) })
+    // A API recebe o CPF apenas com dígitos e retorna o id do usuário criado.
+    // O backend envia um OTP por e-mail para verificação.
+    const idUsuario = await authService.register({ ...data, cpf: onlyDigits(data.cpf) })
+    // Vai para a tela de verificação OTP passando o id, e-mail e senha pela query
+    // A senha é necessária para fazer login automático após a verificação OTP
+    await router.replace({
+      name: 'verify-otp',
+      query: { id: String(idUsuario), email: data.email, senha: data.senha },
+    })
   } catch (error) {
     const apiError = toApiError(error)
     formError.value = apiError.campos ? '' : apiError.mensagem
     setServerErrors(apiError.campos)
-    submitting.value = false
-    return
-  }
-
-  // Conta criada: entra automaticamente e segue para a conexão do banco.
-  // Se o login automático falhar, a pessoa vai para o login com o aviso de conta criada.
-  try {
-    await auth.login({ identificador: data.username, senha: data.senha })
-    await router.replace({ name: 'connect-bank' })
-  } catch {
-    await router.replace({ name: 'login', query: { registered: '1' } })
   } finally {
     submitting.value = false
   }

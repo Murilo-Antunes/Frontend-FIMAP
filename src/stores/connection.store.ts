@@ -9,8 +9,8 @@ type ConnectionStatus = 'desconhecido' | 'conectado' | 'sem_conexao'
 
 /**
  * Conexões bancárias do usuário logado. A fonte da verdade é o BACKEND: aqui fica só uma cópia em
- * memória para decidir a navegação. O itemId nunca vai para localStorage/sessionStorage; some ao
- * recarregar a página e é buscado de novo.
+ * memória para decidir a navegação. O external_connection_id nunca vai para localStorage/sessionStorage;
+ * some ao recarregar a página e é buscado de novo.
  */
 export const useConnectionStore = defineStore('connection', () => {
   const auth = useAuthStore()
@@ -21,7 +21,7 @@ export const useConnectionStore = defineStore('connection', () => {
 
   const hasConnection = computed(() => status.value === 'conectado')
   /** Por enquanto o resumo consulta uma conexão por vez: usa a primeira. */
-  const itemId = computed(() => connections.value[0]?.itemId ?? null)
+  const itemId = computed(() => connections.value[0]?.external_connection_id ?? null)
 
   function reset() {
     connections.value = []
@@ -37,8 +37,11 @@ export const useConnectionStore = defineStore('connection', () => {
       pending = connectionService
         .listConnections(userId)
         .then((list) => {
+          console.log('ConnectionStore - Conexões carregadas:', list)
           connections.value = list
           status.value = list.length > 0 ? 'conectado' : 'sem_conexao'
+          console.log('ConnectionStore - Status atualizado para:', status.value)
+          console.log('ConnectionStore - hasConnection:', list.length > 0)
         })
         .finally(() => {
           pending = null
@@ -48,11 +51,18 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   function add(connection: BankConnection) {
-    connections.value = [...connections.value.filter((c) => c.itemId !== connection.itemId), connection]
+    console.log('ConnectionStore - Adicionando conexão:', connection)
+    connections.value = [
+      ...connections.value.filter((c) => c.external_connection_id !== connection.external_connection_id),
+      connection,
+    ]
     status.value = 'conectado'
+    console.log('ConnectionStore - Conexões atualizadas:', connections.value)
+    console.log('ConnectionStore - Status após add:', status.value)
+    console.log('ConnectionStore - hasConnection após add:', hasConnection.value)
   }
 
-  /** itemId para consultar dados; lança NoBankConnectionError se o usuário não conectou nada. */
+  /** external_connection_id para consultar dados; lança NoBankConnectionError se o usuário não conectou nada. */
   async function requireItemId(): Promise<string> {
     if (status.value === 'desconhecido') await load()
     if (!itemId.value) throw new NoBankConnectionError()

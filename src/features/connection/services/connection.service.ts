@@ -1,22 +1,34 @@
-import { financeHttp } from '@/lib/api/finance-http'
+import { http } from '@/lib/api/http'
 import type {
   BankConnection,
   BankConnectionsResponse,
   ConnectTokenResponse,
+  CreateConnectionPayload,
 } from '../types/connection.types'
 
 const BASE = '/v1/openfinance'
 
 /**
+ * Formata a data no formato YYYY-MM-DD HH:mm:ss
+ */
+function formatarDataSincronizacao(data: Date): string {
+  const ano = data.getFullYear()
+  const mes = String(data.getMonth() + 1).padStart(2, '0')
+  const dia = String(data.getDate()).padStart(2, '0')
+  const horas = String(data.getHours()).padStart(2, '0')
+  const minutos = String(data.getMinutes()).padStart(2, '0')
+  const segundos = String(data.getSeconds()).padStart(2, '0')
+  
+  return `${ano}-${mes}-${dia} ${horas}:${minutos}:${segundos}`
+}
+
+/**
  * Comunicação com a API financeira para conectar bancos.
- * Hoje a API não tem autenticação, então o usuário é identificado por `clientUserId` (o id do
- * usuário logado). Quando houver autenticação, o backend passa a ler o usuário da sessão e esse
- * parâmetro deixa de ser enviado.
  */
 export const connectionService = {
   /** Token de curta duração que autoriza o widget do Pluggy a abrir para ESTE usuário. */
   async createConnectToken(clientUserId: number | string): Promise<string> {
-    const { data } = await financeHttp.post<ConnectTokenResponse>(`${BASE}/connect-token`, {
+    const { data } = await http.post<ConnectTokenResponse>(`${BASE}/connect-token`, {
       clientUserId: String(clientUserId),
     })
     if (!data?.accessToken) {
@@ -26,22 +38,43 @@ export const connectionService = {
   },
 
   /**
-   * Registra o item criado no widget. O backend deve confirmar no Pluggy que o item pertence a
-   * `clientUserId` antes de salvar (nunca confiar só no que o navegador envia).
+   * Registra o item criado no widget no endpoint /conexoes/:idUsuario
+   * O backend deve confirmar no Pluggy que o item pertence a este usuário antes de salvar.
    */
-  async saveConnection(clientUserId: number | string, itemId: string): Promise<BankConnection> {
-    const { data } = await financeHttp.post<BankConnection>(`${BASE}/conexoes`, {
-      clientUserId: String(clientUserId),
-      itemId,
-    })
+  async saveConnection(
+    idUsuario: number,
+    consentimentoApi: string,
+    externalConnectionId: string,
+  ): Promise<BankConnection> {
+    const payload: CreateConnectionPayload = {
+      consentimento_api: consentimentoApi,
+      ultima_sincronizacao: formatarDataSincronizacao(new Date()),
+      provedor: 'pluggy',
+      external_connection_id: externalConnectionId,
+      status: true,
+    }
+    
+    const { data } = await http.post<BankConnection>(`${BASE}/conexoes/${idUsuario}`, payload)
     return data
   },
 
-  /** Conexões do usuário. Lista vazia = ainda não conectou nenhuma conta. */
-  async listConnections(clientUserId: number | string): Promise<BankConnection[]> {
-    const { data } = await financeHttp.get<BankConnectionsResponse>(`${BASE}/conexoes`, {
-      params: { clientUserId: String(clientUserId) },
-    })
-    return data.conexoes ?? []
+  /** Conexões do usuário em GET /conexoes/:idUsuario. Lista vazia = ainda não conectou nenhuma conta. */
+  async listConnections(idUsuario: number): Promise<BankConnection[]> {
+    console.log('ConnectionService - Buscando conexões para idUsuario:', idUsuario)
+    console.log('ConnectionService - URL do endpoint:', `${BASE}/conexoes/${idUsuario}`)
+    
+    const { data } = await http.get<BankConnectionsResponse>(`${BASE}/conexoes/${idUsuario}`)
+    
+    console.log('ConnectionService - Resposta completa do endpoint:', data)
+    console.log('ConnectionService - data.conexoes:', data.conexoes)
+    console.log('ConnectionService - Tipo de data.conexoes:', typeof data.conexoes)
+    console.log('ConnectionService - É array?:', Array.isArray(data.conexoes))
+    console.log('ConnectionService - Length:', data.conexoes?.length)
+    
+    const conexoes = data.conexoes ?? []
+    console.log('ConnectionService - Conexões retornadas:', conexoes)
+    console.log('ConnectionService - Quantidade de conexões:', conexoes.length)
+    
+    return conexoes
   },
 }

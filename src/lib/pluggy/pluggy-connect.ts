@@ -12,7 +12,7 @@ export interface PluggyConnectOptions {
   connectToken: string
   /** Inclui conectores de teste (Sandbox). Nunca em produção. */
   includeSandbox?: boolean
-  onSuccess: (data: { item: { id: string } }) => void | Promise<void>
+  onSuccess: (data: { item: { id: string; consentId?: string } }) => void | Promise<void>
   onError?: (error: { message: string }) => void
   onOpen?: () => void
   onClose?: () => void

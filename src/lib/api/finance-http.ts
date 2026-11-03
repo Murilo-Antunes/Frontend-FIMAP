@@ -1,14 +1,7 @@
-import axios from 'axios'
-import { env } from '@/config/env'
-
 /**
- * Cliente da API financeira (Open Finance). Fica separado do `http` de autenticação porque:
- *  - é outro serviço (outra URL);
- *  - por enquanto não tem autenticação, então não envia cookies nem tenta renovar sessão.
- * Quando a autenticação existir, ela entra aqui (cookies/interceptor) sem tocar nas features.
+ * @deprecated Use `http` de `@/lib/api/http` diretamente.
+ * Re-export mantido temporariamente para não quebrar imports existentes enquanto
+ * a migração não foi aplicada em todos os serviços. Remova este arquivo após ajustar
+ * connection.service e dashboard.service.
  */
-export const financeHttp = axios.create({
-  baseURL: env.financeApiUrl,
-  timeout: 20_000,
-  headers: { Accept: 'application/json' },
-})
+export { http as financeHttp } from './http'

@@ -21,6 +21,8 @@ const step = ref<Step>('idle')
 const errorMessage = ref('')
 /** Item criado no widget cujo registro no backend falhou (permite tentar de novo sem refazer o login no banco). */
 const pendingItemId = ref<string | null>(null)
+/** consentId retornado pelo Pluggy Connect */
+const pendingConsentId = ref<string | null>(null)
 
 let widget: PluggyConnectInstance | null = null
 
@@ -33,17 +35,28 @@ const buttonLabel = computed(() => {
 })
 
 /** Registra o item no backend e segue para o dashboard. */
-async function saveItem(itemId: string) {
+async function saveItem(itemId: string, consentId: string) {
   if (!auth.usuario) return
   step.value = 'saving'
   errorMessage.value = ''
   try {
-    const saved = await connectionService.saveConnection(auth.usuario.id, itemId)
-    connection.add({ ...saved, itemId: saved.itemId ?? itemId })
+    console.log('ConnectBankView - Salvando conexão:', { itemId, consentId })
+    const saved = await connectionService.saveConnection(auth.usuario.id, consentId, itemId)
+    console.log('ConnectBankView - Conexão salva:', saved)
+    connection.add(saved)
+    console.log('ConnectBankView - Estado da store após add:', {
+      status: connection.status,
+      hasConnection: connection.hasConnection,
+      connections: connection.connections
+    })
     pendingItemId.value = null
+    pendingConsentId.value = null
+    console.log('ConnectBankView - Redirecionando para dashboard...')
     await router.replace({ name: 'dashboard' })
   } catch (error) {
+    console.error('ConnectBankView - Erro ao salvar conexão:', error)
     pendingItemId.value = itemId
+    pendingConsentId.value = consentId
     errorMessage.value = `Sua conta foi conectada, mas não conseguimos salvar a conexão. ${toApiError(error).mensagem}`
     step.value = 'idle'
   }
@@ -53,8 +66,8 @@ async function onConnect() {
   if (busy.value || !auth.usuario) return
 
   // Conexão já feita, só faltou salvar
-  if (pendingItemId.value) {
-    await saveItem(pendingItemId.value)
+  if (pendingItemId.value && pendingConsentId.value) {
+    await saveItem(pendingItemId.value, pendingConsentId.value)
     return
   }
 
@@ -68,7 +81,14 @@ async function onConnect() {
     widget = new PluggyConnect({
       connectToken,
       includeSandbox: env.pluggyIncludeSandbox,
-      onSuccess: ({ item }) => saveItem(item.id),
+      onSuccess: ({ item }) => {
+        console.log('Pluggy Connect - Retorno completo:', { item })
+        const consentId = item.consentId || item.id
+        console.log('Pluggy Connect - item.id:', item.id)
+        console.log('Pluggy Connect - item.consentId:', item.consentId)
+        console.log('Pluggy Connect - consentId usado:', consentId)
+        saveItem(item.id, consentId)
+      },
       onError: () => {
         errorMessage.value = 'Não foi possível concluir a conexão com o banco. Tente novamente.'
         step.value = 'idle'

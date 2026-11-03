@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Lock, User } from 'lucide-vue-next'
+import { ArrowRight, Lock, Mail } from 'lucide-vue-next'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import TextField from '@/components/shared/TextField.vue'
 import SubmitButton from '@/components/shared/SubmitButton.vue'
@@ -15,25 +15,17 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const form = reactive({ identificador: '', senha: '' })
+const form = reactive({ email: '', senha: '' })
 const { errors, validate, clearError, setServerErrors } = useZodForm(loginSchema)
 const submitting = ref(false)
 const formError = ref('')
 
 // Mensagens vindas de outros fluxos (cadastro e redefinição de senha)
 const notice = computed(() => {
-  if (route.query.registered) return 'Conta criada com sucesso! Faça login para continuar.'
+  if (route.query.registered) return 'Conta criada e verificada! Faça login para continuar.'
   if (route.query.reset) return 'Senha redefinida com sucesso! Faça login com a nova senha.'
   return ''
 })
-
-/** Aceita apenas caminhos internos para evitar redirecionamento para sites externos. */
-function redirectTarget(): string {
-  const redirect = route.query.redirect
-  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
-    ? redirect
-    : '/dashboard'
-}
 
 async function onSubmit() {
   formError.value = ''
@@ -43,7 +35,9 @@ async function onSubmit() {
   submitting.value = true
   try {
     await auth.login(data)
-    await router.replace(redirectTarget())
+    // Não redireciona diretamente - deixa o router e os guards decidirem
+    // O connectionGuard vai verificar se tem conexão e redirecionar adequadamente
+    await router.push({ name: 'dashboard' })
   } catch (error) {
     const apiError = toApiError(error)
     formError.value = apiError.mensagem
@@ -65,14 +59,16 @@ async function onSubmit() {
       <FormAlert v-if="formError">{{ formError }}</FormAlert>
 
       <TextField
-        v-model="form.identificador"
-        label="Nome de usuário ou E-mail"
-        placeholder="Seu usuário"
-        autocomplete="username"
-        :error="errors.identificador"
-        @update:model-value="clearError('identificador')"
+        v-model="form.email"
+        label="E-mail"
+        type="email"
+        placeholder="seu@email.com"
+        autocomplete="email"
+        inputmode="email"
+        :error="errors.email"
+        @update:model-value="clearError('email')"
       >
-        <template #icon><User :size="20" /></template>
+        <template #icon><Mail :size="20" /></template>
       </TextField>
 
       <div class="flex flex-col gap-2">

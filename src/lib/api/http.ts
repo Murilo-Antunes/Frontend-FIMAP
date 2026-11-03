@@ -2,12 +2,12 @@ import axios from 'axios'
 import { env } from '@/config/env'
 
 /**
- * Instância única do Axios usada por todos os serviços.
- * `withCredentials` faz o navegador enviar/receber os cookies HttpOnly da sessão.
+ * Instância única do Axios usada por todos os serviços (auth, conexão, dashboard).
+ * A nova API não usa cookies nem token no header por enquanto: sem withCredentials.
+ * Timeout generoso (20 s) para cobrir chamadas Open Finance que dependem do Pluggy.
  */
 export const http = axios.create({
   baseURL: env.apiUrl,
-  withCredentials: true,
-  timeout: 15_000,
+  timeout: 20_000,
   headers: { 'Content-Type': 'application/json' },
 })

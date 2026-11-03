@@ -1,4 +1,4 @@
-import { financeHttp } from '@/lib/api/finance-http'
+import { http } from '@/lib/api/http'
 import type { DashboardOverview, EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
 import { hasSummaryData, type ResumoApiResponse } from '../types/openfinance.types'
 import { buildEvolution, buildOverview } from './dashboard.mapper'
@@ -8,7 +8,7 @@ async function fetchSummary(
   period: EvolutionPeriod,
   signal?: AbortSignal,
 ): Promise<ResumoApiResponse> {
-  const { data } = await financeHttp.get<ResumoApiResponse>('/v1/openfinance/financeiro/resumo', {
+  const { data } = await http.get<ResumoApiResponse>('/v1/openfinance/financeiro/resumo', {
     params: { itemId, periodo: period },
     signal,
   })
