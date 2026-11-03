@@ -36,6 +36,7 @@ async function onSubmit() {
     // Emite os dados para o próximo passo
     emit('submitted', { email: data.email, idUsuario })
   } catch (error) {
+    console.error('Error in forgot password flow:', error)
     const apiError = toApiError(error)
     formError.value = apiError.campos ? '' : apiError.mensagem
     setServerErrors(apiError.campos)

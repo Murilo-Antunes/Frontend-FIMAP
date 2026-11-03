@@ -9,14 +9,22 @@ import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
 import { authService } from '../services/auth.service'
 import { z } from 'zod'
+import OtpInput from '../components/OtpInput.vue'
 
 const router = useRouter()
 const route = useRoute()
 const idUsuario = Number(route.params.id)
 
+// Etapas: 'verify-otp', 'new-password'
+const step = ref<'verify-otp' | 'new-password'>('verify-otp')
+
 const form = ref({ codigo: '', novaSenha: '', confirmarSenha: '' })
-const schema = z.object({
+
+const otpSchema = z.object({
   codigo: z.string().regex(/^\d{6}$/, 'Informe os 6 dígitos do código.'),
+})
+
+const passwordSchema = z.object({
   novaSenha: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres.'),
   confirmarSenha: z.string().min(1, 'Confirme a nova senha.'),
 }).refine((data) => data.novaSenha === data.confirmarSenha, {
@@ -24,37 +32,109 @@ const schema = z.object({
   path: ['confirmarSenha'],
 })
 
-const { errors, validate, clearError } = useZodForm(schema)
+// Re-cria o validador sempre que a etapa mudar
+// O useZodForm precisa ser re-executado quando step mudar
+import { computed } from 'vue'
+const currentSchema = computed(() => step.value === 'verify-otp' ? otpSchema : passwordSchema)
+const { errors, validate, clearError } = useZodForm(currentSchema.value)
+
+// Hack: Como o useZodForm é estático, vamos criar um validador manual 
+// que contorna essa limitação apenas para a troca de schema.
+function validateForm() {
+  const schema = currentSchema.value
+  const result = schema.safeParse(form.value)
+  if (!result.success) {
+      console.log('Validação falhou:', result.error)
+      return null
+  }
+  return result.data
+}
+
 const submitting = ref(false)
 const formError = ref('')
 
 async function onSubmit() {
+  console.log('onSubmit chamado, etapa atual:', step.value)
   formError.value = ''
-  const data = validate(form.value)
-  if (!data) return
+  
+  if (step.value === 'verify-otp') {
+    const data = validateForm()
+    if (!data) return
 
-  submitting.value = true
-  try {
-    await authService.resetPassword(idUsuario, data.codigo, data.novaSenha)
-    await router.replace({ name: 'login', query: { reset: '1' } })
-  } catch (error) {
-    formError.value = toApiError(error).mensagem
-  } finally {
-    submitting.value = false
+    submitting.value = true
+    try {
+      console.log('Chamando verifyPasswordOtp...')
+      await authService.verifyPasswordOtp(idUsuario, data.codigo)
+      step.value = 'new-password'
+    } catch (error) {
+      console.error('Erro em verifyPasswordOtp:', error)
+      formError.value = toApiError(error).mensagem
+    } finally {
+      submitting.value = false
+    }
+  } else {
+    const data = validateForm()
+    if (!data) return
+
+    submitting.value = true
+    try {
+      console.log('Chamando updatePassword...')
+      await authService.updatePassword(idUsuario, data.novaSenha)
+      await router.replace({ name: 'login', query: { reset: '1' } })
+    } catch (error) {
+      console.error('Erro em updatePassword:', error)
+      formError.value = toApiError(error).mensagem
+    } finally {
+      submitting.value = false
+    }
   }
 }
 </script>
 
 <template>
-  <AuthLayout title="Redefinir Senha" subtitle="Informe o código enviado e sua nova senha.">
+  <AuthLayout 
+    :title="step === 'verify-otp' ? 'Verificar Código' : 'Nova Senha'" 
+    :subtitle="step === 'verify-otp' ? 'Informe o código enviado ao seu e-mail.' : 'Escolha uma nova senha para sua conta.'"
+  >
     <form class="flex w-full max-w-md flex-col gap-4" novalidate @submit.prevent="onSubmit">
       <FormAlert v-if="formError">{{ formError }}</FormAlert>
 
-      <TextField v-model="form.codigo" label="Código OTP" placeholder="000000" :error="errors.codigo" @update:model-value="clearError('codigo')" />
-      <TextField v-model="form.novaSenha" label="Nova Senha" type="password" :error="errors.novaSenha" @update:model-value="clearError('novaSenha')" />
-      <TextField v-model="form.confirmarSenha" label="Confirmar Senha" type="password" :error="errors.confirmarSenha" @update:model-value="clearError('confirmarSenha')" />
+      <template v-if="step === 'verify-otp'">
+        <div class="rounded-xl border border-neutral-200 bg-white px-2 py-5">
+          <OtpInput
+            v-model="form.codigo"
+            :invalid="Boolean(errors.codigo)"
+            :disabled="submitting"
+            @update:model-value="clearError('codigo')"
+          />
+        </div>
+        <p v-if="errors.codigo" class="text-xs text-red-600" role="alert">
+          {{ errors.codigo }}
+        </p>
 
-      <SubmitButton :loading="submitting">Redefinir Senha</SubmitButton>
+        <SubmitButton :loading="submitting">Verificar Código</SubmitButton>
+
+        <RouterLink
+          :to="{ name: 'forgot-password' }"
+          class="text-center text-sm text-neutral-600 hover:text-black hover:underline"
+        >
+          Voltar para e-mail
+        </RouterLink>
+      </template>
+
+      <template v-else>
+        <TextField v-model="form.novaSenha" label="Nova Senha" type="password" :error="errors.novaSenha" @update:model-value="clearError('novaSenha')" />
+        <TextField v-model="form.confirmarSenha" label="Confirmar Senha" type="password" :error="errors.confirmarSenha" @update:model-value="clearError('confirmarSenha')" />
+        
+        <SubmitButton :loading="submitting">Redefinir Senha</SubmitButton>
+        
+        <RouterLink
+          :to="{ name: 'login' }"
+          class="text-center text-sm text-neutral-600 hover:text-black hover:underline"
+        >
+          Voltar ao login
+        </RouterLink>
+      </template>
     </form>
   </AuthLayout>
 </template>
