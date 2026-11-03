@@ -60,20 +60,10 @@ export const connectionService = {
 
   /** Conexões do usuário em GET /conexoes/:idUsuario. Lista vazia = ainda não conectou nenhuma conta. */
   async listConnections(idUsuario: number): Promise<BankConnection[]> {
-    console.log('ConnectionService - Buscando conexões para idUsuario:', idUsuario)
-    console.log('ConnectionService - URL do endpoint:', `${BASE}/conexoes/${idUsuario}`)
     
     const { data } = await http.get<BankConnectionsResponse>(`${BASE}/conexoes/${idUsuario}`)
     
-    console.log('ConnectionService - Resposta completa do endpoint:', data)
-    console.log('ConnectionService - data.conexoes:', data.conexoes)
-    console.log('ConnectionService - Tipo de data.conexoes:', typeof data.conexoes)
-    console.log('ConnectionService - É array?:', Array.isArray(data.conexoes))
-    console.log('ConnectionService - Length:', data.conexoes?.length)
-    
     const conexoes = data.conexoes ?? []
-    console.log('ConnectionService - Conexões retornadas:', conexoes)
-    console.log('ConnectionService - Quantidade de conexões:', conexoes.length)
     
     return conexoes
   },

@@ -36,23 +36,25 @@ const buttonLabel = computed(() => {
 
 /** Registra o item no backend e segue para o dashboard. */
 async function saveItem(itemId: string, consentId: string) {
-  if (!auth.usuario) return
-  step.value = 'saving'
-  errorMessage.value = ''
-  try {
-    console.log('ConnectBankView - Salvando conexão:', { itemId, consentId })
-    const saved = await connectionService.saveConnection(auth.usuario.id, consentId, itemId)
-    console.log('ConnectBankView - Conexão salva:', saved)
-    connection.add(saved)
-    console.log('ConnectBankView - Estado da store após add:', {
-      status: connection.status,
-      hasConnection: connection.hasConnection,
-      connections: connection.connections
-    })
+    if (!auth.usuario) return
+    step.value = 'saving'
+    errorMessage.value = ''
+    try {
+      await connectionService.saveConnection(
+      auth.usuario.id,
+      consentId,
+      itemId,
+    )
+    // Busca os dados reais da conexão no backend
+    await connection.load()
+    if (!connection.itemId) {
+      throw new Error('Conexão salva, mas o identificador bancário não foi encontrado.')
+    }
     pendingItemId.value = null
     pendingConsentId.value = null
-    console.log('ConnectBankView - Redirecionando para dashboard...')
     await router.replace({ name: 'dashboard' })
+
+    
   } catch (error) {
     console.error('ConnectBankView - Erro ao salvar conexão:', error)
     pendingItemId.value = itemId
@@ -82,12 +84,17 @@ async function onConnect() {
       connectToken,
       includeSandbox: env.pluggyIncludeSandbox,
       onSuccess: ({ item }) => {
-        console.log('Pluggy Connect - Retorno completo:', { item })
         const consentId = item.consentId || item.id
-        console.log('Pluggy Connect - item.id:', item.id)
-        console.log('Pluggy Connect - item.consentId:', item.consentId)
-        console.log('Pluggy Connect - consentId usado:', consentId)
-        saveItem(item.id, consentId)
+          if (!consentId) {
+            errorMessage.value = 'Não foi possível identificar o consentimento.'
+            step.value = 'idle'
+            return
+          }
+
+          void saveItem(item.id, consentId)
+            .catch((error) => {
+              console.error('Erro inesperado ao salvar conexão:', error)
+            })
       },
       onError: () => {
         errorMessage.value = 'Não foi possível concluir a conexão com o banco. Tente novamente.'
@@ -101,6 +108,7 @@ async function onConnect() {
 
     step.value = 'widget'
     await widget.init()
+
   } catch (error) {
     errorMessage.value = toApiError(error).mensagem
     step.value = 'idle'

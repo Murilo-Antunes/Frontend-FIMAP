@@ -50,7 +50,6 @@ export const authService = {
    * Confirma que o e-mail pertence ao usuário antes de liberar o login.
    */
   async verifyRegisterOtp(idUsuario: number, codigo: string): Promise<void> {
-    console.log(idUsuario)
     const { data } = await http.post<ApiSuccessResponse>(`${BASE}/consultar/otp/${idUsuario}`, {
       id_usuario: idUsuario,
       codigo,
@@ -73,6 +72,7 @@ export const authService = {
       senha: payload.senha,
       dispositivo: dispositivoInfo,
     })
+    
     if (!data?.sucesso || !data.usuario) {
       throw new Error(data?.mensagem ?? 'Credenciais inválidas.')
     }
@@ -129,7 +129,7 @@ export const authService = {
   async resetPassword(idUsuario: number, codigo: string, novaSenha: string): Promise<void> {
     const { data } = await http.post<ApiSuccessResponse>(`${BASE}/alterar/senha/${idUsuario}`, {
       codigo,
-novaSenha,
+      novaSenha,
     })
     if (!data?.sucesso) {
       throw new Error(data?.mensagem ?? 'Não foi possível redefinir a senha.')
