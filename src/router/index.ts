@@ -40,7 +40,6 @@ export const router = createRouter({
     },
     {
       // Verificação OTP após o cadastro (?id=...&email=...).
-      // Não é guestOnly: o usuário ainda não está logado, mas a rota é transitória.
       path: '/verificar-email',
       name: 'verify-otp',
       component: () => import('@/features/auth/views/VerifyOtpView.vue'),
@@ -63,6 +62,19 @@ export const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('@/features/dashboard/views/DashboardView.vue'),
+          meta: { requiresAuth: true, requiresConnection: true },
+        },
+        // Novas rotas integradas do Núcleo Financeiro e Transações
+        {
+          path: 'nucleo-financeiro',
+          name: 'nucleo-financeiro',
+          component: () => import('@/features/dashboard/views/NucleoFinanceiroView.vue'),
+          meta: { requiresAuth: true, requiresConnection: true },
+        },
+        {
+          path: 'transacoes',
+          name: 'transacoes',
+          component: () => import('@/features/dashboard/views/TodasTransacoesView.vue'),
           meta: { requiresAuth: true, requiresConnection: true },
         },
       ],

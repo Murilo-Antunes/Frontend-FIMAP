@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { useRouter } from 'vue-router'
 import { ChevronRight, CreditCard, HandCoins, Landmark, TrendingUp } from 'lucide-vue-next'
 import { useHiddenValues } from '@/composables/useHiddenValues'
 import { formatCurrency } from '@/lib/format'
 import type { CoreItem, CoreItemType } from '../types/dashboard.types'
 
 defineProps<{ items: CoreItem[] }>()
+
+const router = useRouter()
 
 const ICONS: Record<CoreItemType, Component> = {
   cartoes: CreditCard,
@@ -15,16 +18,21 @@ const ICONS: Record<CoreItemType, Component> = {
 }
 
 const { mask } = useHiddenValues()
+
+function goToNucleoFinanceiro() {
+  router.push({ name: 'nucleo-financeiro' })
+}
 </script>
 
 <template>
   <section class="rounded-3xl border border-neutral-100 bg-white p-6 shadow-sm">
     <header class="flex items-center justify-between">
       <h2 class="text-lg font-semibold">Núcleo Financeiro</h2>
-      <!-- Sem rota ainda: será a lista completa de produtos financeiros -->
       <button
         type="button"
-        class="flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black"
+        @click="goToNucleoFinanceiro"
+        class="flex items-center gap-1 text-xs font-medium text-neutral-600 hover:text-black transition"
+        aria-label="Ver todo o núcleo financeiro"
       >
         Ver todos <ChevronRight :size="14" aria-hidden="true" />
       </button>

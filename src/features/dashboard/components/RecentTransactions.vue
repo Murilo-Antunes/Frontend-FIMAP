@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { ArrowDown, Banknote, ListFilter, ShoppingBag, Utensils } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { ArrowDown, Banknote, ShoppingBag, Utensils, ChevronRight } from 'lucide-vue-next'
 import { useHiddenValues } from '@/composables/useHiddenValues'
 import { formatTransactionDate } from '@/lib/date'
 import { formatCurrency } from '@/lib/format'
 import type { DashboardTransaction } from '../types/dashboard.types'
 
 defineProps<{ transactions: DashboardTransaction[] }>()
+
+const router = useRouter()
 
 const CATEGORY_ICONS: Record<string, Component> = {
   Tecnologia: ShoppingBag,
@@ -22,6 +25,10 @@ function amountLabel(transaction: DashboardTransaction): string {
   const sign = transaction.tipo === 'receita' ? '+' : '-'
   return `${sign} ${mask(formatCurrency(transaction.valor))}`
 }
+
+function goToTransactions() {
+  router.push({ name: 'transacoes' })
+}
 </script>
 
 <template>
@@ -31,13 +38,13 @@ function amountLabel(transaction: DashboardTransaction): string {
         <h2 class="text-lg font-semibold">Últimas Transações</h2>
         <p class="text-xs text-neutral-500">Tempo real via Open Banking</p>
       </div>
-      <!-- Sem ação ainda: filtros virão com a tela de transações -->
       <button
         type="button"
-        class="rounded-full bg-neutral-100 p-3 text-neutral-700 hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-black"
-        aria-label="Filtrar transações"
+        @click="goToTransactions"
+        class="flex items-center gap-1 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-black transition"
+        aria-label="Ver todas as transações"
       >
-        <ListFilter :size="18" />
+        Ver todos <ChevronRight :size="14" aria-hidden="true" />
       </button>
     </header>
 
