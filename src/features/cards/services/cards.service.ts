@@ -1,4 +1,5 @@
 import { http } from '@/lib/api/http'
+import type { ExtratoCartao, ExtratoCartaoApi } from '../types/cards-statement.types'
 import type {
   Cartao,
   CartaoApi,
@@ -89,5 +90,24 @@ export const cardsService = {
     if (resposta.status === 202 || resposta.data.atualizando) return SINCRONIZANDO
 
     return { atualizando: false, dados: resposta.data.transacoes }
+  },
+
+  /**
+   * Extrato completo de uma fatura do cartão.
+   * Sem `mes`, a API devolve a fatura atual (e informa o mês em `periodoSelecionado`).
+   */
+  async getStatement(
+    cartaoId: string,
+    itemId: string,
+    signal?: AbortSignal,
+    mes?: string,
+  ): Promise<ResultadoApi<ExtratoCartao>> {
+    const resposta = await http.get<ExtratoCartaoApi>(
+      `${BASE}/${encodeURIComponent(cartaoId)}/extrato`,
+      { params: { itemId, ...(mes ? { mes } : {}) }, signal },
+    )
+    if (resposta.status === 202 || resposta.data.atualizando) return SINCRONIZANDO
+
+    return { atualizando: false, dados: resposta.data }
   },
 }

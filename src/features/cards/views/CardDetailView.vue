@@ -32,13 +32,16 @@ function abrirCartao(id: string): void {
 }
 
 function verExtrato(): void {
-  // Rota de extrato ainda não existe; quando existir, basta registrar `card-statement`.
-  if (router.hasRoute('card-statement')) {
-    void router.push({ name: 'card-statement', params: { cartaoId: props.cartaoId } })
-  }
+  void router.push({ name: 'card-statement', params: { cartaoId: props.cartaoId } })
 }
 
-onMounted( async () => void store.carregar(await connection.requireItemId()))
+async function tentarNovamente(): Promise<void> {
+  await store.carregar(await connection.requireItemId(), { forcar: true })
+}
+
+onMounted(async () => {
+  await store.carregar(await connection.requireItemId())
+})
 
 // Mantém o cartão marcado para que o "voltar" anime de volta até ele na carteira.
 watch(
@@ -62,7 +65,7 @@ watch(
     <div v-else-if="!cartao" class="mt-8">
       <CardsErrorState
         :mensagem="store.erro ?? 'Cartão não encontrado.'"
-        async@tentar ="store.carregar(await connection.requireItemId(), { forcar: true })"
+        @tentar="tentarNovamente"
       />
       <p class="text-center">
         <button

@@ -81,6 +81,12 @@ export const router = createRouter({
           meta: { requiresAuth: true, requiresConnection: true },
         },
         ...cardsRoutes,
+        {
+          path: 'cartoes/:cartaoId/extrato', // ajuste ao padrão da sua rota card-detail
+          name: 'card-statement',
+          component: () => import('@/features/cards/views/CardStatementView.vue'),
+          props: true,
+        }
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
