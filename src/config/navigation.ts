@@ -40,7 +40,7 @@ export const MAIN_NAV: NavItem[] = [
 
 /** Itens do menu lateral ("Navegação principal"). */
 export const SIDEBAR_NAV: NavItem[] = [
-  { key: 'cards', label: 'Carteira de Cartões', icon: CreditCard, description: 'Limites e extratos' },
+  { key: 'cards', label: 'Carteira de Cartões', icon: CreditCard, description: 'Limites e extratos', to: '/cartoes' },
   {
     key: 'accounts',
     label: 'Contas Bancárias',

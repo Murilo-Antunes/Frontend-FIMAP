@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard } from './guards/auth.guard'
 import { connectionGuard } from './guards/connection.guard'
+import { cardsRoutes } from './routes/cards.routes'
+import { setupCardsTransition } from './guards/cards-transition'
+
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -77,6 +80,7 @@ export const router = createRouter({
           component: () => import('@/features/dashboard/views/TodasTransacoesView.vue'),
           meta: { requiresAuth: true, requiresConnection: true },
         },
+        ...cardsRoutes,
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
@@ -85,3 +89,4 @@ export const router = createRouter({
 
 router.beforeEach(authGuard)
 router.beforeEach(connectionGuard)
+setupCardsTransition(router)

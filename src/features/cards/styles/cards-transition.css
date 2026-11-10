@@ -1,0 +1,35 @@
+/*
+ * Transição compartilhada do cartão (Selecionar cartão ⇄ Detalhe do cartão).
+ * O cartão clicado recebe `view-transition-name: cartao-ativo` nas duas telas;
+ * o navegador anima a posição/tamanho entre elas e faz crossfade do resto.
+ */
+
+::view-transition-group(cartao-ativo) {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 10;
+}
+
+::view-transition-old(cartao-ativo),
+::view-transition-new(cartao-ativo) {
+  animation-duration: 560ms;
+  height: 100%;
+  width: 100%;
+  object-fit: fill;
+}
+
+::view-transition-old(root) {
+  animation-duration: 180ms;
+}
+
+::view-transition-new(root) {
+  animation-duration: 280ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}
