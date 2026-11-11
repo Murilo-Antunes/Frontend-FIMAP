@@ -11,14 +11,28 @@ export const loginSchema = z.object({
 })
 
 export const registerSchema = z.object({
-  nome: z.string().trim().min(3, 'Informe seu nome completo.'),
+  nome: z
+    .string()
+    .trim()
+    .min(3, 'Informe seu nome completo.')
+    .regex(
+      /^[\p{L}\s]+$/u,
+      'O nome deve conter apenas letras e espaços.'
+    ),
+
   cpf: z.string().refine(isValidCpf, 'CPF inválido.'),
+
   email: emailField,
+
   username: z
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9_.]{3,30}$/, 'Use de 3 a 30 caracteres: letras, números, "_" ou ".".'),
+    .regex(
+      /^[a-z0-9_.]{3,30}$/,
+      'Use de 3 a 30 caracteres: letras, números, "_" ou ".".'
+    ),
+
   senha: passwordField,
 })
 
