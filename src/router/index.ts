@@ -86,7 +86,19 @@ export const router = createRouter({
           name: 'card-statement',
           component: () => import('@/features/cards/views/CardStatementView.vue'),
           props: true,
-        }
+        },
+        { path: 'contas', 
+          name: 'accounts', 
+          component: () => import('@/features/accounts/views/AccountsView.vue') 
+        },
+        { path: 'investimentos', 
+          name: 'investments', 
+          component: () => import('@/features/investments/views/InvestmentsView.vue') 
+        },
+        { path: 'investimentos/ativos', 
+          name: 'portfolio-assets', 
+          component: () => import('@/features/investments/views/PortfolioAssetsView.vue') 
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },

@@ -46,8 +46,9 @@ export const SIDEBAR_NAV: NavItem[] = [
     label: 'Contas Bancárias',
     icon: Landmark,
     description: 'Contas conectadas via Open Finance',
+    to: "/contas"
   },
-  { key: 'investments', label: 'Investimentos', icon: TrendingUp, description: 'Carteira e rentabilidade' },
+  { key: 'investments', label: 'Investimentos', icon: TrendingUp, description: 'Carteira e rentabilidade', to: "/investimentos" },
   { key: 'loans', label: 'Empréstimos', icon: HandCoins, description: 'Contratos e parcelas' },
   { key: 'settings', label: 'Configurações', icon: Settings, description: 'Personalize sua experiência' },
   {
