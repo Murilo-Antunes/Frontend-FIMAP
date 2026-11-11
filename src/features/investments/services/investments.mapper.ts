@@ -35,6 +35,8 @@ const SUBTYPE_LABEL: Record<string, string> = {
   BDR: 'BDR',
   REAL_ESTATE_FUND: 'Fundo Imobiliário',
   RETIREMENT: 'Previdência',
+  PGBL: 'Previdência (PGBL)',
+  INVESTMENT_FUND: 'Fundo de Investimento',
 }
 
 function humanize(value: string): string {
@@ -43,10 +45,10 @@ function humanize(value: string): string {
 }
 
 function resolveClass(raw: RawRecord): AssetClassKey {
-  const type = (asString(raw.tipo ?? raw.type) ?? '').toUpperCase()
-  const subtype = (asString(raw.subtipo ?? raw.subtype) ?? '').toUpperCase()
-  const name = (asString(raw.nome ?? raw.name) ?? '').toUpperCase()
-  const currency = (asString(raw.moeda ?? raw.currencyCode) ?? 'BRL').toUpperCase()
+  const type = (asString(raw.tipo) ?? '').toUpperCase()
+  const subtype = (asString(raw.subtipo) ?? '').toUpperCase()
+  const name = (asString(raw.nome) ?? '').toUpperCase()
+  const currency = (asString(raw.moeda) ?? 'BRL').toUpperCase()
 
   if (subtype.includes('CRYPTO') || currency !== 'BRL') return 'cripto-internacional'
   if (subtype === 'REAL_ESTATE_FUND' || /\bFII\b/.test(name)) return 'fiis'
@@ -57,8 +59,8 @@ function resolveClass(raw: RawRecord): AssetClassKey {
 }
 
 function rateLabel(raw: RawRecord): string | null {
-  const rate = asNumber(raw.taxa ?? raw.rate)
-  const rateType = (asString(raw.tipoTaxa ?? raw.rateType) ?? '').toUpperCase()
+  const rate = asNumber(raw.taxa)
+  const rateType = (asString(raw.tipoTaxa) ?? '').toUpperCase()
   if (rate === null || rate === 0) return null
   const value = formatPercent(rate, Number.isInteger(rate) ? 0 : 1)
   switch (rateType) {
@@ -68,8 +70,13 @@ function rateLabel(raw: RawRecord): string | null {
       return `${value} da Selic`
     case 'IPCA':
       return `IPCA + ${value}`
+    // O Pluggy usa "PREFIXED"/"POSTFIXED"; mantemos PRE/POS como sinônimos por segurança.
+    case 'PREFIXED':
     case 'PRE':
       return `${value} a.a.`
+    case 'POSTFIXED':
+    case 'POS':
+      return `${value} (pós-fixado)`
     default:
       return null
   }
@@ -77,20 +84,20 @@ function rateLabel(raw: RawRecord): string | null {
 
 function mapAsset(raw: RawRecord): PortfolioAsset | null {
   const id = asString(raw.id)
-  const balance = asNumber(raw.saldo ?? raw.balance)
+  const balance = asNumber(raw.valor)
   if (!id || balance === null) return null
 
   const classKey = resolveClass(raw)
-  const subtype = (asString(raw.subtipo ?? raw.subtype) ?? '').toUpperCase()
+  const subtype = (asString(raw.subtipo) ?? '').toUpperCase()
   const rate = rateLabel(raw)
-  const quantity = asNumber(raw.quantidade ?? raw.quantity)
-  const twelve = asNumber(raw.rendimento12Meses ?? raw.lastTwelveMonthsRate)
-
-  const invested = asNumber(raw.valorInvestido ?? raw.valorAplicado ?? raw.amountOriginal)
-  const profit = asNumber(raw.rendimento ?? raw.amountProfit) ?? (invested !== null ? balance - invested : null)
+  const quantity = asNumber(raw.quantidade)
+  const twelve = asNumber(raw.rendimentoUltimos12Meses)
+  const invested = asNumber(raw.valorAplicado)
+  const profit = asNumber(raw.lucro) ?? (invested !== null ? balance - invested : null)
   const profitPct = profit !== null && invested !== null && invested > 0 ? (profit / invested) * 100 : null
 
-  const issuer = asString(raw.emissor ?? raw.issuer)
+  // "emissor" é quem emitiu o ativo (ex.: banco do CDB); "instituicao" é a custodiante/corretora.
+  const issuer = asString(raw.emissor) ?? asString(raw.instituicao)
   const typeLabel = SUBTYPE_LABEL[subtype] ?? (subtype ? humanize(subtype) : CLASS_LABEL[classKey])
   const quantityLabel =
     quantity !== null && (classKey === 'acoes-etfs' || classKey === 'fiis' || classKey === 'fundos')
@@ -99,12 +106,12 @@ function mapAsset(raw: RawRecord): PortfolioAsset | null {
 
   return {
     id,
-    name: asString(raw.nome ?? raw.name) ?? 'Ativo',
+    name: asString(raw.nome) ?? 'Ativo',
     classKey,
     classLabel: CLASS_LABEL[classKey],
     subtitle: [issuer ?? typeLabel, quantityLabel ?? rate].filter(Boolean).join(' • '),
     badge: rate ?? (twelve !== null ? `${formatSignedPercent(twelve)} em 12m` : null),
-    code: asString(raw.codigo ?? raw.code),
+    code: asString(raw.codigo),
     balance,
     invested,
     profit,
@@ -113,7 +120,7 @@ function mapAsset(raw: RawRecord): PortfolioAsset | null {
 }
 
 export function mapInvestments(data: unknown): { assets: PortfolioAsset[]; monthYield: number; monthYieldKnown: boolean; twelveWeighted: [number, number] } {
-  const rawList = extractList(data, ['investimentos', 'investments', 'results'])
+  const rawList = extractList(data, ['investimentos', 'results'])
   const assets: PortfolioAsset[] = []
   let monthYield = 0
   let monthYieldKnown = false
@@ -125,12 +132,12 @@ export function mapInvestments(data: unknown): { assets: PortfolioAsset[]; month
     if (!asset) continue
     assets.push(asset)
 
-    const monthRate = asNumber(raw.rendimentoMes ?? raw.lastMonthRate)
+    const monthRate = asNumber(raw.rendimentoUltimoMes)
     if (monthRate !== null) {
       monthYield += (asset.balance * monthRate) / (100 + monthRate)
       monthYieldKnown = true
     }
-    const twelve = asNumber(raw.rendimento12Meses ?? raw.lastTwelveMonthsRate)
+    const twelve = asNumber(raw.rendimentoUltimos12Meses)
     if (twelve !== null && asset.balance > 0) {
       twelveSum += asset.balance * twelve
       twelveBase += asset.balance
@@ -191,8 +198,8 @@ export function buildSummary(
 export function mapEvolution(data: unknown): Map<string, number> {
   const byDay = new Map<string, number>()
   for (const raw of extractList(data, ['evolucao', 'evolution', 'results'])) {
-    const date = asString(raw.data ?? raw.date)
-    const value = asNumber(raw.valor ?? raw.value)
+    const date = asString(raw.data) ?? asString(raw.date)
+    const value = asNumber(raw.valor) ?? asNumber(raw.value)
     if (!date || value === null || !dayjs(date).isValid()) continue
     const key = dayjs(date).format('YYYY-MM-DD')
     byDay.set(key, (byDay.get(key) ?? 0) + value)

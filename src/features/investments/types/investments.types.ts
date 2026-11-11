@@ -1,14 +1,13 @@
 /**
- * CONTRATO ASSUMIDO DO BACKEND (confirmar com o controller):
+ * CONTRATO DO BACKEND (confirmado em produção, 11/11/2026 — services/pluggyService.js#listarInvestimentos):
  *
- * GET /v1/openfinance/financeiro/investimentos/:itemId            (JÁ EXISTE no router)
- *   → { sucesso, investimentos: [{ id, name, type, subtype, balance, amountOriginal, amountProfit,
- *        quantity, code, issuer, rate, rateType, lastMonthRate, lastTwelveMonthsRate, currencyCode, date }] }
+ * GET /v1/openfinance/financeiro/investimentos/:itemId
+ *   → { atualizando, total, investimentos: [{ id, nome, tipo, subtipo, valor, moeda, instituicao,
+ *        codigo, emissor, quantidade, valorAplicado, lucro, taxa, tipoTaxa, taxaAnual,
+ *        rendimentoUltimoMes, rendimentoUltimos12Meses, vencimento, dataSaldo }] }
  *
  * GET /v1/openfinance/financeiro/investimentos/:itemId/evolucao?periodo=1m|6m|1a|tudo   (NÃO EXISTE — CRIAR)
- *   → { sucesso, evolucao: [{ data: 'YYYY-MM-DD', valor: number }] }
- *
- * Os campos seguem o formato do Pluggy. Se o backend renomeia, ajuste só investments.mapper.ts.
+ *   → { evolucao: [{ data: 'YYYY-MM-DD', valor: number }] }
  */
 
 export type AssetClassKey = 'renda-fixa' | 'acoes-etfs' | 'fiis' | 'fundos' | 'cripto-internacional' | 'outros'

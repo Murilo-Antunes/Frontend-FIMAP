@@ -33,7 +33,10 @@ export function useInvestmentsData() {
     partial.value = false
 
     try {
-      const refs = await listConnectionRefs(auth.usuario?.id??0, signal)
+      const usuarioId = auth.usuario?.id
+      if (usuarioId === undefined) throw new Error('Usuário não autenticado.')
+
+      const refs = await listConnectionRefs(usuarioId, signal)
       const results = await Promise.allSettled(refs.map((ref) => fetchInvestments(ref.itemId, signal)))
       if (signal.aborted) return
 

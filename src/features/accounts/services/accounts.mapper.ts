@@ -66,6 +66,10 @@ function resolveIcon(category: string, amount: number): StatementIcon {
 
 export function mapTransactions(data: unknown, ref: ConnectionRef): StatementEntry[] {
   const entries: StatementEntry[] = []
+  // NÃO CONFIRMADO: ainda não vi a resposta real de /financeiro/transacoes/:itemId.
+  // Por padrão, /contas e /conexoes vieram todo em português ("nome", "saldo", "tipo"), então
+  // aceitamos "valor"/"descricao"/"data"/"categoria" como primeira tentativa e o formato
+  // em inglês como reserva. Envie uma amostra real para eu confirmar e remover o fallback duplo.
   for (const raw of extractList(data, ['transacoes', 'transactions', 'results'])) {
     const id = asString(raw.id)
     const rawAmount = asNumber(raw.valor) ?? asNumber(raw.amount)

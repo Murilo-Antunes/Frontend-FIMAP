@@ -31,7 +31,10 @@ export function useAccountsData() {
     partial.value = false
 
     try {
-      const refs = await listConnectionRefs(auth.usuario?.id??0, signal)
+      const usuarioId = auth.usuario?.id
+      if (usuarioId === undefined) throw new Error('Usuário não autenticado.')
+
+      const refs = await listConnectionRefs(usuarioId, signal)
 
       const results = await Promise.all(
         refs.map(async (ref) => {

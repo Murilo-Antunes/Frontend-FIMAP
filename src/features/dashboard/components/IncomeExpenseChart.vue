@@ -69,7 +69,19 @@ const options = computed<ApexOptions>(() => ({
     categories: props.data.map((point) => point.label),
     axisBorder: { show: false },
     axisTicks: { show: false },
-    labels: { style: { colors: '#9ca3af', fontSize: '12px' } },
+    labels: {
+      style: { colors: '#9ca3af', fontSize: '12px' },
+      hideOverlappingLabels: true,
+      formatter: (value: string) => {
+        if (props.period === 'dia') {
+          const hour = parseInt(value.split(':')[0], 10);
+          if (isNaN(hour) || hour % 2 !== 0) {
+            return '';
+          }
+        }
+        return value;
+      },
+    },
     tooltip: { enabled: false },
   },
   yaxis: { show: false },
