@@ -99,6 +99,17 @@ export const router = createRouter({
           name: 'portfolio-assets', 
           component: () => import('@/features/investments/views/PortfolioAssetsView.vue') 
         },
+        {
+          path: 'emprestimos',
+          name: 'loans',
+          component: () => import('@/features/loans/views/LoansOverviewView.vue'),
+        },
+        {
+          path: 'emprestimos/:id/historico',
+          name: 'loan-history',
+          component: () => import('@/features/loans/views/LoanHistoryView.vue'),
+          props: true,
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },

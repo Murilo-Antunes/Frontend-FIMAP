@@ -40,7 +40,12 @@ export const MAIN_NAV: NavItem[] = [
 
 /** Itens do menu lateral ("Navegação principal"). */
 export const SIDEBAR_NAV: NavItem[] = [
-  { key: 'cards', label: 'Carteira de Cartões', icon: CreditCard, description: 'Limites e extratos', to: '/cartoes' },
+  { key: 'cards', 
+    label: 'Carteira de Cartões', 
+    icon: CreditCard, 
+    description: 'Limites e extratos', 
+    to: '/cartoes' 
+  },
   {
     key: 'accounts',
     label: 'Contas Bancárias',
@@ -48,9 +53,23 @@ export const SIDEBAR_NAV: NavItem[] = [
     description: 'Contas conectadas via Open Finance',
     to: "/contas"
   },
-  { key: 'investments', label: 'Investimentos', icon: TrendingUp, description: 'Carteira e rentabilidade', to: "/investimentos" },
-  { key: 'loans', label: 'Empréstimos', icon: HandCoins, description: 'Contratos e parcelas' },
-  { key: 'settings', label: 'Configurações', icon: Settings, description: 'Personalize sua experiência' },
+  { key: 'investments', 
+    label: 'Investimentos', 
+    icon: TrendingUp, 
+    description: 'Carteira e rentabilidade', 
+    to: "/investimentos" 
+  },
+  { key: 'loans', 
+    label: 'Empréstimos', 
+    icon: HandCoins, 
+    description: 'Contratos e parcelas', 
+    to: '/emprestimos' 
+  },
+  { key: 'settings', 
+    label: 'Configurações', 
+    icon: Settings, 
+    description: 'Personalize sua experiência' 
+  },
   {
     key: 'opportunities',
     label: 'Histórico de Oportunidades',
