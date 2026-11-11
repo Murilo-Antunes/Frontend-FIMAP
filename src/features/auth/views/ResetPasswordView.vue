@@ -35,54 +35,47 @@ const passwordSchema = z.object({
 // Re-cria o validador sempre que a etapa mudar
 // O useZodForm precisa ser re-executado quando step mudar
 import { computed } from 'vue'
-const currentSchema = computed(() => step.value === 'verify-otp' ? otpSchema : passwordSchema)
-const { errors, validate, clearError } = useZodForm(currentSchema.value)
-
-// Hack: Como o useZodForm é estático, vamos criar um validador manual 
-// que contorna essa limitação apenas para a troca de schema.
-function validateForm() {
-  const schema = currentSchema.value
-  const result = schema.safeParse(form.value)
-  if (!result.success) {
-      console.log('Validação falhou:', result.error)
-      return null
-  }
-  return result.data
-}
+const currentSchema = computed(() =>
+  step.value === 'verify-otp' ? otpSchema : passwordSchema
+)
+const { errors, validate, clearError } = useZodForm(currentSchema)
 
 const submitting = ref(false)
 const formError = ref('')
 
 async function onSubmit() {
-  console.log('onSubmit chamado, etapa atual:', step.value)
   formError.value = ''
-  
+
   if (step.value === 'verify-otp') {
-    const data = validateForm()
-    if (!data) return
+    const data = validate(form.value)
+
+    if (!data || !('codigo' in data)) return
 
     submitting.value = true
+
     try {
-      console.log('Chamando verifyPasswordOtp...')
       await authService.verifyPasswordOtp(idUsuario, data.codigo)
       step.value = 'new-password'
     } catch (error) {
-      console.error('Erro em verifyPasswordOtp:', error)
       formError.value = toApiError(error).mensagem
     } finally {
       submitting.value = false
     }
   } else {
-    const data = validateForm()
-    if (!data) return
+    const data = validate(form.value)
+
+    if (!data || !('novaSenha' in data)) return
 
     submitting.value = true
+
     try {
-      console.log('Chamando updatePassword...')
       await authService.updatePassword(idUsuario, data.novaSenha)
-      await router.replace({ name: 'login', query: { reset: '1' } })
+
+      await router.replace({
+        name: 'login',
+        query: { reset: '1' },
+      })
     } catch (error) {
-      console.error('Erro em updatePassword:', error)
       formError.value = toApiError(error).mensagem
     } finally {
       submitting.value = false
