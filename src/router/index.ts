@@ -110,6 +110,12 @@ export const router = createRouter({
           component: () => import('@/features/loans/views/LoanHistoryView.vue'),
           props: true,
         },
+        {
+          path: 'configuracoes',
+          name: 'configuracoes',
+          component: () => import('@/features/settings/views/SettingsView.vue'),
+          meta: { requiresAuth: true, requiresConnection: true },
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },

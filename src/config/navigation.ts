@@ -68,7 +68,8 @@ export const SIDEBAR_NAV: NavItem[] = [
   { key: 'settings', 
     label: 'Configurações', 
     icon: Settings, 
-    description: 'Personalize sua experiência' 
+    description: 'Personalize sua experiência',
+    to: '/configuracoes'
   },
   {
     key: 'opportunities',
