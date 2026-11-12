@@ -40,6 +40,11 @@ const percentualInvestimentos = computed(() => {
   return 100 - percentualContas.value;
 });
 
+const hasCartoes = computed(() => Boolean(cartoes.value?.cartoes?.length));
+const hasContasConectadas = computed(() => Boolean(contas.value?.contas?.length));
+const hasInvestimentosAtivos = computed(() => Boolean(investimentos.value?.investimentos?.length));
+const hasEmprestimosAtivos = computed(() => Boolean(emprestimos.value?.emprestimos?.length));
+
 onMounted(async () => {
   try {
     loading.value = true;
@@ -168,15 +173,18 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-if="cartoes?.cartoes?.[0]" class="bg-gray-50 p-4 rounded-xl space-y-1">
+            <div v-if="hasCartoes" class="bg-gray-50 p-4 rounded-xl space-y-1">
               <div class="flex justify-between items-baseline">
                 <span class="text-xs text-gray-500">Fatura Aberta</span>
-                <span class="text-base font-bold text-gray-900">{{ formatCurrency(cartoes.cartoes[0].faturaAberta) }}</span>
+                <span class="text-base font-bold text-gray-900">{{ formatCurrency(cartoes!.cartoes[0].faturaAberta) }}</span>
               </div>
               <div class="flex justify-between text-[11px] text-gray-400">
-                <span>Limite: {{ formatCurrency(cartoes.cartoes[0].limite) }}</span>
-                <span class="text-emerald-600 font-medium">Disponível: {{ formatCurrency(cartoes.cartoes[0].limiteDisponivel) }}</span>
+                <span>Limite: {{ formatCurrency(cartoes!.cartoes[0].limite) }}</span>
+                <span class="text-emerald-600 font-medium">Disponível: {{ formatCurrency(cartoes!.cartoes[0].limiteDisponivel) }}</span>
               </div>
+            </div>
+            <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
+              Essa conta não tem cartão cadastrado.
             </div>
           </div>
 
@@ -192,7 +200,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="hasContasConectadas" class="space-y-2">
               <span class="text-xs text-gray-400 block">Saldo Líquido Disponível</span>
               <p class="text-2xl font-extrabold text-gray-900">{{ formatCurrency(saldo?.saldoTotal || 0) }}</p>
 
@@ -202,6 +210,9 @@ onMounted(async () => {
                   <span class="font-medium mr-1">{{ c.nome }}:</span> {{ formatCurrency(c.saldo) }}
                 </div>
               </div>
+            </div>
+            <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
+              Essa conta não tem contas conectadas.
             </div>
           </div>
 
@@ -219,7 +230,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="hasInvestimentosAtivos" class="space-y-2">
               <span class="text-xs text-gray-400 block">Posição Total Aplicada</span>
               <p class="text-2xl font-extrabold text-gray-900">{{ formatCurrency(totalInvestimentos) }}</p>
 
@@ -236,6 +247,9 @@ onMounted(async () => {
                   {{ inv.nome }}
                 </span>
               </div>
+            </div>
+            <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
+              Essa conta não tem investimentos cadastrados.
             </div>
           </div>
         </div>
@@ -258,15 +272,15 @@ onMounted(async () => {
             <span class="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded-full font-medium">Em dia</span>
           </div>
 
-          <div v-if="emprestimos?.emprestimos?.[0]" class="space-y-4">
+          <div v-if="hasEmprestimosAtivos" class="space-y-4">
             <div class="bg-gray-50 p-4 rounded-xl flex justify-between items-center">
               <div>
                 <span class="text-xs text-gray-400 block">Valor Contratado</span>
-                <span class="font-bold text-sm text-gray-900">{{ formatCurrency(emprestimos.emprestimos[0].valorContratado) }}</span>
+                <span class="font-bold text-sm text-gray-900">{{ formatCurrency(emprestimos!.emprestimos[0].valorContratado) }}</span>
               </div>
               <div class="text-right">
                 <span class="text-xs text-gray-400 block">Saldo Devedor</span>
-                <span class="font-bold text-sm text-rose-600">{{ formatCurrency(emprestimos.emprestimos[0].saldoDevedor) }}</span>
+                <span class="font-bold text-sm text-rose-600">{{ formatCurrency(emprestimos!.emprestimos[0].saldoDevedor) }}</span>
               </div>
             </div>
 
@@ -274,17 +288,20 @@ onMounted(async () => {
               <div class="flex justify-between text-xs text-gray-500">
                 <span>Progresso de amortização</span>
                 <span>
-                  {{ emprestimos.emprestimos[0].parcelasPagas }} de {{ emprestimos.emprestimos[0].parcelasPagas + emprestimos.emprestimos[0].parcelasRestantes }} pagas 
-                  ({{ Math.round((emprestimos.emprestimos[0].parcelasPagas / (emprestimos.emprestimos[0].parcelasPagas + emprestimos.emprestimos[0].parcelasRestantes)) * 100) }}%)
+                  {{ emprestimos!.emprestimos[0].parcelasPagas }} de {{ emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes }} pagas 
+                  ({{ Math.round((emprestimos!.emprestimos[0].parcelasPagas / (emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes)) * 100) }}%)
                 </span>
               </div>
               <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                 <div 
                   class="bg-black h-full" 
-                  :style="{ width: `${(emprestimos.emprestimos[0].parcelasPagas / (emprestimos.emprestimos[0].parcelasPagas + emprestimos.emprestimos[0].parcelasRestantes)) * 100}%` }"
+                  :style="{ width: `${(emprestimos!.emprestimos[0].parcelasPagas / (emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes)) * 100}%` }"
                 ></div>
               </div>
             </div>
+          </div>
+          <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
+            Essa conta não tem empréstimos ou fianças cadastrados.
           </div>
         </div>
 

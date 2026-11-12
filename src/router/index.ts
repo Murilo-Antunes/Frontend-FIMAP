@@ -33,13 +33,13 @@ export const router = createRouter({
       path: '/recuperar-senha',
       name: 'forgot-password',
       component: () => import('@/features/auth/views/ForgotPasswordView.vue'),
-      meta: { guestOnly: true },
+      // Sem guestOnly: o usuário logado chega aqui por "Alterar Senha" em Configurações.
     },
     {
       path: '/redefinir-senha/:id',
       name: 'reset-password',
       component: () => import('@/features/auth/views/ResetPasswordView.vue'),
-      meta: { guestOnly: true },
+      // Sem guestOnly: o usuário logado chega aqui após confirmar a senha atual.
     },
     {
       // Verificação OTP após o cadastro (?id=...&email=...).
@@ -114,6 +114,12 @@ export const router = createRouter({
           path: 'configuracoes',
           name: 'configuracoes',
           component: () => import('@/features/settings/views/SettingsView.vue'),
+          meta: { requiresAuth: true, requiresConnection: true },
+        },
+        {
+          path: 'configuracoes/seguranca/alterar-senha',
+          name: 'change-password',
+          component: () => import('@/features/settings/views/ChangePasswordView.vue'),
           meta: { requiresAuth: true, requiresConnection: true },
         },
       ],

@@ -85,12 +85,11 @@ onMounted(load)
       <!-- Coluna esquerda -->
       <div class="flex flex-col gap-6">
         <SettingsCard title="Segurança e Acesso" :icon="ShieldCheck">
-          <!--
-            Ainda não existe endpoint de troca de senha autenticada nem de 2FA
-            (ver "Próximos passos" do prompt de contexto). As linhas ficam desabilitadas
-            até o backend expor esses contratos.
-          -->
-          <div class="flex items-center gap-4 border-b border-neutral-100 py-4 opacity-70">
+          <button
+            type="button"
+            class="flex w-full items-center gap-4 border-b border-neutral-100 py-4 text-left transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-neutral-900"
+            @click="router.push({ name: 'change-password' })"
+          >
             <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-neutral-100">
               <RefreshCw class="size-4" aria-hidden="true" />
             </span>
@@ -98,10 +97,10 @@ onMounted(load)
               <p class="text-sm font-medium text-neutral-900">Alterar Senha</p>
               <p class="mt-0.5 text-xs text-neutral-500">Redefina sua senha de acesso</p>
             </div>
-            <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600">Em breve</span>
             <ChevronRight class="size-4 text-neutral-400" aria-hidden="true" />
-          </div>
+          </button>
 
+          <!-- 2FA ainda não tem endpoint no backend: linha desabilitada. -->
           <div class="flex items-center gap-4 py-4 opacity-70">
             <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-neutral-100">
               <Smartphone class="size-4" aria-hidden="true" />
