@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import SubmitButton from '@/components/shared/SubmitButton.vue'
@@ -7,16 +7,32 @@ import FormAlert from '@/components/shared/FormAlert.vue'
 import TextField from '@/components/shared/TextField.vue'
 import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
+import { useAuthStore } from '@/stores/auth.store'
+import { useConnectionStore } from '@/stores/connection.store'
+import { usePasswordChangeStore } from '@/stores/password-change.store'
+import { passwordService } from '@/features/settings/services/password.service'
 import { authService } from '../services/auth.service'
 import { z } from 'zod'
 import OtpInput from '../components/OtpInput.vue'
+
 
 const router = useRouter()
 const route = useRoute()
 const idUsuario = Number(route.params.id)
 
+const authStore = useAuthStore()
+const connectionStore = useConnectionStore()
+const passwordChange = usePasswordChangeStore()
+
+// Veio de Configurações > Alterar Senha com a senha atual já confirmada: pula o OTP.
+// Avaliado uma única vez ao abrir a tela (não muda se a flag expirar com a tela aberta).
+const viaCurrentPassword = passwordChange.isVerified(idUsuario)
+
+// Ao sair da tela (concluir, cancelar ou voltar), a senha atual não fica na memória.
+onBeforeUnmount(() => passwordChange.clear())
+
 // Etapas: 'verify-otp', 'new-password'
-const step = ref<'verify-otp' | 'new-password'>('verify-otp')
+const step = ref<'verify-otp' | 'new-password'>(viaCurrentPassword ? 'new-password' : 'verify-otp')
 
 const form = ref({ codigo: '', novaSenha: '', confirmarSenha: '' })
 
@@ -69,7 +85,26 @@ async function onSubmit() {
     submitting.value = true
 
     try {
-      await authService.updatePassword(idUsuario, data.novaSenha)
+      if (viaCurrentPassword) {
+        // Fluxo de Configurações: o backend confere a senha atual e grava a nova.
+        const senhaAtual = passwordChange.getCurrentPassword(idUsuario)
+        if (!senhaAtual) {
+          formError.value =
+            'A confirmação da senha atual expirou. Volte às Configurações e confirme novamente.'
+          return
+        }
+        await passwordService.changePassword(idUsuario, senhaAtual, data.novaSenha)
+      } else {
+        // Fluxo "esqueci a senha": já passou pelo OTP.
+        await authService.updatePassword(idUsuario, data.novaSenha)
+      }
+      passwordChange.clear()
+
+      // Usuário logado (veio de Configurações): encerra a sessão para entrar com a nova senha.
+      // Sem isso o guestOnly do /login o devolveria ao dashboard sem nenhum aviso.
+      if (authStore.isAuthenticated) {
+        await authStore.logout()
+      }
 
       await router.replace({
         name: 'login',
@@ -122,10 +157,10 @@ async function onSubmit() {
         <SubmitButton :loading="submitting">Redefinir Senha</SubmitButton>
         
         <RouterLink
-          :to="{ name: 'login' }"
+          :to="{ name: viaCurrentPassword ? 'configuracoes' : 'login' }"
           class="text-center text-sm text-neutral-600 hover:text-black hover:underline"
         >
-          Voltar ao login
+          {{ viaCurrentPassword ? 'Cancelar e voltar para Configurações' : 'Voltar ao login' }}
         </RouterLink>
       </template>
     </form>

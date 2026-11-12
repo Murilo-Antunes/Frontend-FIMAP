@@ -6,11 +6,13 @@ import { Eye, EyeOff, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide
 import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePasswordChangeStore } from '@/stores/password-change.store'
 import { PASSWORD_MAX, PASSWORD_MIN, currentPasswordSchema } from '../schemas/password.schemas'
 import { passwordService } from '../services/password.service'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const passwordChange = usePasswordChangeStore()
 
 const senhaAtual = ref('')
 const showPassword = ref(false)
@@ -35,22 +37,23 @@ async function submit(): Promise<void> {
   const data = validate({ senhaAtual: senhaAtual.value })
   if (!data) return
 
-  const usuario = authStore.usuario
-  const email = usuario?.email
-  if (!email) {
+  const idUsuario = Number(authStore.usuario?.id)
+  if (!Number.isInteger(idUsuario) || idUsuario <= 0) {
     formError.value = 'Não foi possível identificar sua conta. Entre novamente e tente de novo.'
     return
   }
 
   submitting.value = true
   try {
-    const ok = await passwordService.verifyCurrentPassword(email, data.senhaAtual)
+    const ok = await passwordService.verifyCurrentPassword(idUsuario, data.senhaAtual)
     if (!ok) {
       setServerErrors({ senhaAtual: 'Senha atual incorreta.' })
       return
     }
-    senhaAtual.value = '' // não deixa a senha em memória além do necessário
-    await router.push({ name: 'reset-password', params: { id: String(usuario.id) } })
+    senhaAtual.value = '' // limpa o campo; a senha segue só na store (memória), por até 5 min
+    // Faz a ResetPasswordView pular o OTP e reenviar a senha atual junto com a nova.
+    passwordChange.markVerified(idUsuario, data.senhaAtual)
+    await router.push({ name: 'reset-password', params: { id: String(idUsuario) } })
   } catch (e) {
     formError.value = toApiError(e).mensagem
   } finally {
