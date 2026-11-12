@@ -9,7 +9,7 @@
 export type BandeiraCartao = 'mastercard' | 'visa' | 'elo' | 'amex' | 'outra'
 
 /** Tema visual do cartão. O backend não manda tema: ele é derivado no front. */
-export type TemaCartao = 'black' | 'laranja' | 'vermelho' | 'azul' | 'verde' | 'roxo'
+export type TemaCartao = 'black' | 'branco' | 'roxo' | 'laranja' | 'vermelho' | 'azul' | 'verde'
 
 /* ------------------------------- Cartões ---------------------------------- */
 
@@ -48,7 +48,6 @@ export interface ListarCartoesApi {
 
 export interface Cartao {
   id: string
-  itemId: string
   nome: string
   instituicao: string | null
   moeda: string

@@ -28,9 +28,20 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
 <template>
   <article
     class="card-face"
-    :style="{ '--face-bg': tema.fundo, '--face-fg': tema.texto }"
+    :style="{
+      '--face-bg': tema.fundo,
+      '--face-fg': tema.texto,
+      '--face-chip': tema.chip,
+      '--face-orb1': tema.orb1,
+      '--face-orb2': tema.orb2,
+      '--face-sheen': tema.sheen,
+    }"
     :data-compacto="compacto"
+    :data-escuro="tema.escuro"
   >
+    <!-- Camadas decorativas do gradiente -->
+    <div class="card-face__orb card-face__orb--1" aria-hidden="true" />
+    <div class="card-face__orb card-face__orb--2" aria-hidden="true" />
     <div class="card-face__sheen" aria-hidden="true" />
 
     <!-- Cabeçalho compacto (aba da carteira) -->
@@ -52,23 +63,21 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
           <p class="card-face__name">{{ cartao.nome }}</p>
         </div>
         <div class="card-face__icons">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="10.25" stroke="currentColor" stroke-width="1.5" opacity=".8" />
-            <path
-              d="M9 8.5c1.1 2 1.1 5 0 7M12 7c1.7 3 1.7 7 0 10M15 8.5c1.1 2 1.1 5 0 7"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              opacity=".9"
-            />
+          <!-- Ícone NFC -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" class="card-face__nfc">
+            <path d="M6.5 7.5A7 7 0 0 1 6.5 16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+            <path d="M9.5 9.5A4 4 0 0 1 9.5 14.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".75"/>
+            <path d="M12.5 11A1.5 1.5 0 0 1 12.5 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
-          <span class="card-face__chip" aria-hidden="true" />
+          <!-- Chip EMV -->
+          <span class="card-face__chip" aria-hidden="true">
+            <span class="card-face__chip-line card-face__chip-line--h" />
+            <span class="card-face__chip-line card-face__chip-line--v" />
+          </span>
         </div>
       </div>
 
       <div class="card-face__row card-face__row--center">
-        <!-- Com o final do número (quando o backend informar) mostra o número;
-             senão mostra o limite disponível, que sempre vem da API. -->
         <p v-if="cartao.finalNumero" class="card-face__number" :aria-label="`Final ${cartao.finalNumero}`">
           <span v-for="grupo in 3" :key="grupo" class="card-face__dots" aria-hidden="true">
             <i v-for="ponto in 4" :key="ponto" />
@@ -117,18 +126,43 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   box-shadow: 0 26px 50px -18px rgb(0 0 0 / 0.5);
 }
 
+/* ── Orbs decorativos ── */
+.card-face__orb {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+.card-face__orb--1 {
+  top: -60px;
+  right: -40px;
+  width: 240px;
+  height: 240px;
+  background: var(--face-orb1);
+  opacity: 1;
+}
+.card-face__orb--2 {
+  bottom: -50px;
+  left: -30px;
+  width: 200px;
+  height: 200px;
+  background: var(--face-orb2);
+  opacity: 1;
+}
+
+/* ── Sheen direcional ── */
 .card-face__sheen {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: radial-gradient(120% 90% at 88% 100%, rgb(255 255 255 / 0.08), transparent 60%);
+  z-index: 0;
+  background: var(--face-sheen);
   pointer-events: none;
 }
 
-/* ----------------------------- Camada compacta ---------------------------- */
+/* ── Camada compacta ── */
 .card-face__compact {
   position: absolute;
   inset: 0 0 auto 0;
+  z-index: 1;
   display: flex;
   height: 66px;
   align-items: center;
@@ -151,6 +185,11 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   border-radius: 999px;
   background: rgb(255 255 255 / 0.2);
 }
+/* tema claro: bolha mais escura */
+.card-face[data-escuro='true'] .card-face__bubble {
+  background: rgb(0 0 0 / 0.1);
+}
+
 .card-face__compact-title {
   min-width: 0;
   overflow: hidden;
@@ -169,20 +208,24 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   line-height: 1;
 }
 .card-face__pill--mono {
-  background: rgb(0 0 0 / 0.18);
+  background: rgb(0 0 0 / 0.12);
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 .card-face__pill--exp {
   margin-left: 0;
-  background: rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.14);
   font-size: 11px;
   letter-spacing: 0.02em;
 }
+.card-face[data-escuro='true'] .card-face__pill--exp {
+  background: rgb(0 0 0 / 0.08);
+}
 
-/* ------------------------------ Camada completa --------------------------- */
+/* ── Camada completa ── */
 .card-face__full {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -201,22 +244,18 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   justify-content: space-between;
   gap: 16px;
 }
-.card-face__row--center {
-  align-items: center;
-}
-.card-face__row--end {
-  align-items: flex-end;
-}
+.card-face__row--center { align-items: center; }
+.card-face__row--end    { align-items: flex-end; }
 
 .card-face__label {
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.65;
+  opacity: 0.6;
 }
 .card-face__label--small {
   font-size: 10px;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 .card-face__name {
   margin-top: 4px;
@@ -244,6 +283,12 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   white-space: nowrap;
 }
 
+/* ── Ícone NFC ── */
+.card-face__nfc {
+  opacity: 0.75;
+}
+
+/* ── Chip EMV ── */
 .card-face__icons {
   display: flex;
   flex: none;
@@ -251,12 +296,36 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   gap: 12px;
 }
 .card-face__chip {
-  width: 32px;
-  height: 22px;
+  position: relative;
+  width: 34px;
+  height: 24px;
+  flex: none;
   border-radius: 5px;
-  background: linear-gradient(135deg, #fde68a 0%, #f5b82e 55%, #e89a0c 100%);
+  background: var(--face-chip);
+  box-shadow: inset 0 1px 2px rgb(255 255 255 / 0.35), 0 1px 3px rgb(0 0 0 / 0.25);
+  overflow: hidden;
+}
+/* linhas do chip */
+.card-face__chip-line {
+  position: absolute;
+  background: rgb(0 0 0 / 0.14);
+}
+.card-face__chip-line--h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+.card-face__chip-line--v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
 }
 
+/* ── Número ── */
 .card-face__number {
   display: flex;
   align-items: center;
@@ -270,8 +339,11 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
   gap: 3px;
 }
 .card-face__dots i {
+  display: block;
   width: 5px;
   height: 5px;
+  border-radius: 50%;
   background: currentColor;
+  opacity: 0.75;
 }
 </style>

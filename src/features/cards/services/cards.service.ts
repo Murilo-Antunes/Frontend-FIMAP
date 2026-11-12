@@ -57,7 +57,7 @@ export const cardsService = {
        return { atualizando: false, dados: [] };
     }
     const responses = await Promise.all(itemIds.map((itemId) => this.list(itemId, signal)))
-    const cartoes = responses.flatMap((res) => (res.atualizando ? [] : res.dados))
+    const cartoes = responses.flatMap((res) => (res.atualizando ? [] : res.dados)).map((c, i) => ({ ...c, tema: derivarTema(c.nome, i) }))
     const atualizando = responses.some((res) => res.atualizando)
     
     return atualizando ? SINCRONIZANDO : { atualizando: false, dados: cartoes }
