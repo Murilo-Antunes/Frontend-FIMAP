@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useConnectionStore } from '@/stores/connection.store';
 import { financeService } from '../services/finance.service';
 import type { TransacaoApiItem } from '../types/finance.types';
@@ -40,7 +40,51 @@ function isPositive(t: TransacaoApiItem): boolean {
   return t.tipo === 'ENTRADA' || t.tipo === 'RECEITA';
 }
 
-// Filtra transações por busca, tipo e conta selecionada
+const months: Record<string, string> = {
+  'Janeiro': '01',
+  'Fevereiro': '02',
+  'Março': '03',
+  'Abril': '04',
+  'Maio': '05',
+  'Junho': '06',
+  'Julho': '07',
+  'Agosto': '08',
+  'Setembro': '09',
+  'Outubro': '10',
+  'Novembro': '11',
+  'Dezembro': '12'
+};
+
+// Função para carregar transações baseada no itemId
+async function carregarTransacoes(itemId: string | number) {
+  loading.value = true;
+  error.value = null;
+  try {
+    // Se selecionou "Todas", define qual itemId usar (primeiro disponível)
+    const conn = itemId === 'Todas' ? connectionStore.connections[0] : connectionStore.connections.find(c => c.id === itemId);
+    const idToFetch = conn ? conn.external_connection_id : null;
+    
+    if (!idToFetch) {
+      error.value = 'Nenhuma conexão financeira ativa selecionada.';
+      transacoes.value = [];
+      return;
+    }
+    
+    const res = await financeService.getTransacoes(String(idToFetch));
+    transacoes.value = res?.transacoes || [];
+  } catch (err: any) {
+    error.value = 'Erro ao carregar as transações.';
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Watcher para recarregar transações quando a conta selecionada mudar
+watch(selectedAccount, (newVal) => {
+  carregarTransacoes(newVal);
+});
+
+// Filtra transações apenas por busca, tipo e período
 const transacoesFiltradas = computed(() => {
   return transacoes.value.filter(t => {
     const entrada = isPositive(t);
@@ -48,12 +92,16 @@ const transacoesFiltradas = computed(() => {
     if (filterType.value === 'ENTRADAS' && !entrada) return false;
     if (filterType.value === 'SAIDAS' && entrada) return false;
     
-    if (selectedAccount.value !== 'Todas' && (t as any).connectionId && (t as any).connectionId !== selectedAccount.value) {
-      // Se a transação tiver vínculo com a conexão, filtra; caso contrário, exibe se compatível
-    }
-
     if (searchQuery.value && !t.descricao.toLowerCase().includes(searchQuery.value.toLowerCase())) {
       return false;
+    }
+
+    if (selectedPeriod.value !== 'Personalizado') {
+      const [monthName, year] = selectedPeriod.value.split(' ');
+      const month = months[monthName];
+      if (month && year && !t.data.startsWith(`${year}-${month}`)) {
+        return false;
+      }
     }
 
     return true;
@@ -94,23 +142,8 @@ const transacoesAgrupadas = computed(() => {
 });
 
 onMounted(async () => {
-  try {
-    loading.value = true;
-    await connectionStore.load();
-    const itemId = connectionStore.itemId;
-
-    if (!itemId) {
-      error.value = 'Nenhuma conexão financeira ativa selecionada.';
-      return;
-    }
-
-    const res = await financeService.getTransacoes(itemId);
-    transacoes.value = res?.transacoes || [];
-  } catch (err: any) {
-    error.value = 'Erro ao carregar as transações.';
-  } finally {
-    loading.value = false;
-  }
+  await connectionStore.load();
+  await carregarTransacoes('Todas');
 });
 </script>
 
@@ -284,4 +317,3 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
