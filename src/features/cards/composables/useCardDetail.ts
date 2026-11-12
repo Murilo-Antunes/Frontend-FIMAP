@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
-import { useConnectionStore } from '@/stores/connection.store'
+import { useCardsStore } from '@/stores/cards.store'
 import { cardsService } from '../services/cards.service'
 import type {
   FaturaCartao,
@@ -33,7 +33,7 @@ function criarRecurso<T>(inicial: T): Recurso<T> {
  * cartão muda ou o componente é desmontado.
  */
 export function useCardDetail(cartaoId: MaybeRefOrGetter<string | null | undefined>) {
-  const connection = useConnectionStore()
+  const cardsStore = useCardsStore()
 
   const fatura = criarRecurso<FaturaCartao | null>(null)
   const categorias = criarRecurso<GastoCategoria[]>([])
@@ -74,7 +74,14 @@ export function useCardDetail(cartaoId: MaybeRefOrGetter<string | null | undefin
 
     const ctrl = new AbortController()
     controlador = ctrl
-    const itemId = await connection.requireItemId()
+    
+    // Obter o itemId correto a partir do store de cartões
+    const cartao = cardsStore.getById(id)
+    const itemId = cartao?.itemId
+    if (!itemId) {
+       console.error('ItemId não encontrado para o cartão:', id);
+       return;
+    }
 
     await Promise.all([
       executar(fatura, () => cardsService.getInvoice(id, itemId, ctrl.signal), null, ctrl.signal),
@@ -89,3 +96,4 @@ export function useCardDetail(cartaoId: MaybeRefOrGetter<string | null | undefin
 
   return { fatura, categorias, transacoes, recarregar: carregar }
 }
+

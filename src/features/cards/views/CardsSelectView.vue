@@ -19,7 +19,10 @@ const carregando = computed(
 const titular = computed(() => auth.usuario?.nome ?? null)
 
 async function carregar(forcar = false): Promise<void> {
-  return store.carregar(await connection.requireItemId(), { forcar })
+  await connection.load()
+  // Garante que enviamos um array de strings
+  const ids = (Array.isArray(connection.itemIds) ? connection.itemIds : [connection.itemIds]).flat() as string[]
+  return store.carregar(ids, { forcar })
 }
 
 onMounted(() => void carregar())

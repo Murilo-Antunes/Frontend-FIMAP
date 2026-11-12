@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useConnectionStore } from '@/stores/connection.store'
+import { NoBankConnectionError } from '@/features/connection/errors/no-bank-connection.error'
 import { toApiError } from '@/lib/api/types/api-error'
 import { loansService } from '../services/loans.service'
 import { buildMockAnticipationOpportunity, mapLoanDetail } from '../services/loans.mapper'
@@ -39,10 +40,16 @@ async function load(options: { silent?: boolean } = {}) {
   controller = new AbortController()
 
   try {
-    const itemId = await connectionStore.requireItemId()
-    const data = await loansService.getLoanDetail(itemId, loanId.value, limitePagas.value, controller.signal)
+    await connectionStore.load()
+    const itemIds = connectionStore.itemIds
+    if (itemIds.length === 0) throw new NoBankConnectionError()
+    const data = await loansService.getLoanDetailAcrossAll(itemIds, loanId.value, limitePagas.value, controller.signal)
     detail.value = mapLoanDetail(data)
   } catch (error) {
+    if (error instanceof NoBankConnectionError) {
+      await router.replace({ name: 'connect-bank' })
+      return
+    }
     errorMessage.value = toApiError(error).mensagem
   } finally {
     loading.value = false

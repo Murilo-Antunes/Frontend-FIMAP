@@ -29,10 +29,26 @@ export const dashboardService = {
     period: EvolutionPeriod = 'mes',
     signal?: AbortSignal,
   ): Promise<DashboardOverview | null> {
-    const data = await fetchSummary(itemId, period, signal)
+    const data = await this.getRawSummary(itemId, period, signal)
     return hasSummaryData(data) ? buildOverview(data) : null
   },
 
+  async getRawSummary(
+    itemId: string,
+    period: EvolutionPeriod = 'mes',
+    signal?: AbortSignal,
+  ): Promise<ResumoApiResponse> {
+    return await fetchSummary(itemId, period, signal)
+  },
+
+  async getAllRawSummaries(
+    itemIds: string[],
+    period: EvolutionPeriod = 'mes',
+    signal?: AbortSignal,
+  ): Promise<ResumoApiResponse[]> {
+    return await Promise.all(itemIds.map((itemId) => this.getRawSummary(itemId, period, signal)))
+  },
+  
   async getEvolution(
     itemId: string,
     period: EvolutionPeriod,

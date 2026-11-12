@@ -16,12 +16,11 @@ export const connectionGuard: NavigationGuard = async (to) => {
 
   const connection = useConnectionStore()
   
-  if (connection.status === 'desconhecido') {
+  if (connection.status === 'desconhecido' || connection.status === 'sem_conexao') {
     try {
       await connection.load()
     } catch (error) {
       console.error('ConnectionGuard - Erro ao carregar conexões:', error)
-      // API fora do ar: deixa a tela abrir; ela mostra o erro e oferece "tentar novamente"
       return true
     }
   }

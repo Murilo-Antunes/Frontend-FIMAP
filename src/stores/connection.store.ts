@@ -24,6 +24,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const hasConnection = computed(() => status.value === 'conectado')
   /** Por enquanto o resumo consulta uma conexão por vez: usa a primeira. */
   const itemId = computed(() => connections.value[0]?.external_connection_id ?? null)
+  const itemIds = computed(() => connections.value.map((c) => c.external_connection_id))
 
   function reset() {
     revision++
@@ -87,5 +88,5 @@ export const useConnectionStore = defineStore('connection', () => {
     { flush: 'sync' },
   )
 
-  return { connections, status, hasConnection, itemId, load, add, reset, requireItemId }
+  return { connections, status, hasConnection, itemId, itemIds, load, add, reset, requireItemId }
 })

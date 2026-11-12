@@ -36,11 +36,13 @@ function verExtrato(): void {
 }
 
 async function tentarNovamente(): Promise<void> {
-  await store.carregar(await connection.requireItemId(), { forcar: true })
+  await connection.load()
+  await store.carregar(connection.itemIds, { forcar: true })
 }
 
 onMounted(async () => {
-  await store.carregar(await connection.requireItemId())
+  await connection.load()
+  await store.carregar(connection.itemIds)
 })
 
 // Mantém o cartão marcado para que o "voltar" anime de volta até ele na carteira.

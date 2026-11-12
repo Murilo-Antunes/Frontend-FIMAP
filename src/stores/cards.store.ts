@@ -24,8 +24,8 @@ export const useCardsStore = defineStore('cards', () => {
     return cartoes.value.find((c) => c.id === id) ?? null
   }
 
-  /** `itemId` = conexão bancária (connectionStore.getItemId()). */
-  async function carregar(itemId: string, opcoes: { forcar?: boolean } = {}): Promise<void> {
+  /** `itemIds` = conexões bancárias. */
+  async function carregar(itemIds: string[], opcoes: { forcar?: boolean } = {}): Promise<void> {
     if (status.value === 'carregando' || status.value === 'sincronizando') return
     if (status.value === 'pronto' && !opcoes.forcar) return
 
@@ -36,7 +36,7 @@ export const useCardsStore = defineStore('cards', () => {
     erro.value = null
 
     try {
-      const lista = await aguardarSincronizacao(() => cardsService.list(itemId, ctrl.signal), {
+      const lista = await aguardarSincronizacao(() => cardsService.listAll(itemIds, ctrl.signal), {
         signal: ctrl.signal,
         onSincronizando: () => {
           status.value = 'sincronizando'

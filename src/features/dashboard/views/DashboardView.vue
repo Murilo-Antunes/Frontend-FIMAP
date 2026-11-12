@@ -16,7 +16,9 @@ import IncomeExpenseChart from '../components/IncomeExpenseChart.vue'
 import RecentTransactions from '../components/RecentTransactions.vue'
 import SummaryCard from '../components/SummaryCard.vue'
 import { dashboardService } from '../services/dashboard.service'
+import { aggregateOverviews } from '../services/dashboard.aggregator'
 import type { DashboardOverview, EvolutionPeriod, EvolutionPoint } from '../types/dashboard.types'
+import type { ResumoFinanceiroApi } from '../types/openfinance.types'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -100,10 +102,21 @@ async function loadDashboard() {
   evolutionError.value = false
   try {
     // Sem conta conectada (ou conexões ainda não carregadas): resolve antes de pedir os dados
-    const itemId = await connection.requireItemId()
-    const loaded = await dashboardService.getOverview(itemId, period.value)
-    if (loaded) applyOverview(loaded)
-    else status.value = 'syncing'
+    const itemIds = Array.isArray(connection.itemIds) ? connection.itemIds : [connection.itemIds as any].flat() as string[]
+    if (itemIds.length === 0) {
+      await connection.requireItemId()
+      return
+    }
+    const responses = await dashboardService.getAllRawSummaries(itemIds, period.value)
+    
+    // Filtra apenas respostas com dados válidos
+    const validData = responses.filter((r): r is ResumoFinanceiroApi => 'patrimonio' in r)
+    
+    if (validData.length > 0) {
+      applyOverview(aggregateOverviews(validData))
+    } else {
+      status.value = 'syncing'
+    }
     schedulePoll()
   } catch (error) {
     if (error instanceof NoBankConnectionError) {

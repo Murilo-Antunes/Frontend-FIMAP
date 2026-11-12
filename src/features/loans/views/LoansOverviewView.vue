@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChevronDown } from 'lucide-vue-next'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -35,14 +35,15 @@ async function loadLoans() {
   controller = new AbortController()
 
   try {
-    const itemId = await connectionStore.requireItemId()
-    const response = await loansService.listLoans(itemId, controller.signal)
+    await connectionStore.load()
+    const itemIds = connectionStore.itemIds
+    const response = await loansService.listAllLoans(itemIds, controller.signal)
     syncing.value = response.atualizando
 
     loans.value = await Promise.all(
-      response.emprestimos.map(async (raw) => {
+      response.emprestimos.map(async (raw: any) => {
         // limitePagas: 3 é suficiente — só precisamos de até 3 linhas pra pré-visualização.
-        const data = await loansService.getLoanDetail(itemId, raw.id, 3, controller!.signal)
+        const data = await loansService.getLoanDetail(raw.itemId, raw.id, 3, controller!.signal)
         const detail = mapLoanDetail(data)
         const loan = detail?.loan ?? mapLoan(raw)
 
@@ -59,6 +60,13 @@ async function loadLoans() {
     loading.value = false
   }
 }
+
+// Consolidação de todas as parcelas de todos os empréstimos para o Cronograma único
+const allInstallments = computed(() => {
+  return loans.value.flatMap((entry) => 
+    entry.preview.map(i => ({ ...i, loanId: entry.loan.id }))
+  ).sort((a, b) => a.vencimento.getTime() - b.vencimento.getTime())
+})
 
 function goToHistory(loanId: string) {
   router.push({ name: 'loan-history', params: { id: loanId } })
@@ -90,9 +98,8 @@ onBeforeUnmount(() => controller?.abort())
         Ainda sincronizando os dados dos seus empréstimos via Open Finance. Alguns valores podem demorar a aparecer.
       </p>
 
-      <div v-for="entry in loans" :key="entry.loan.id" class="mb-8 grid gap-6 lg:grid-cols-2">
-        <LoanOverviewCard :loan="entry.loan" />
-
+      <div class="mb-8 grid gap-6 lg:grid-cols-2">
+        <LoanOverviewCard v-if="loans.length > 0" :loan="loans[0].loan" />
         <LoanOpportunityCard
           eyebrow="Oportunidade detectada por IA"
           icon="sparkles"
@@ -100,35 +107,25 @@ onBeforeUnmount(() => controller?.abort())
           :opportunity="opportunity"
           @primary-action="handleOpportunityAction"
         />
+      </div>
 
-        <div class="rounded-2xl border border-neutral-200 bg-white p-6 lg:col-span-2">
-          <div class="mb-4 flex items-start justify-between">
-            <div>
-              <h2 class="text-base font-semibold text-neutral-900">Cronograma de Parcelas</h2>
-              <p class="text-sm text-neutral-500">Acompanhamento e quitação antecipada de lançamentos</p>
-            </div>
-            <span class="shrink-0 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
-              {{ entry.loan.parcelasRestantes }} parcelas pendentes
-            </span>
+      <div class="mb-8 rounded-2xl border border-neutral-200 bg-white p-6">
+        <div class="mb-4 flex items-start justify-between">
+          <div>
+            <h2 class="text-base font-semibold text-neutral-900">Cronograma de Parcelas Consolidado</h2>
+            <p class="text-sm text-neutral-500">Acompanhamento de lançamentos de todos os empréstimos</p>
           </div>
+        </div>
 
-          <div class="divide-y divide-neutral-100">
-            <LoanInstallmentRow
-              v-for="installment in entry.preview"
-              :key="installment.numero"
-              :installment="installment"
-              variant="row"
-            />
-          </div>
-
-          <button
-            type="button"
-            class="mt-4 flex w-full items-center justify-center gap-1 text-sm font-medium text-neutral-600 hover:text-neutral-900"
-            @click="goToHistory(entry.loan.id)"
-          >
-            Ver histórico completo
-            <ChevronDown class="h-4 w-4" />
-          </button>
+        <div class="divide-y divide-neutral-100">
+          <LoanInstallmentRow
+            v-for="installment in allInstallments"
+            :key="installment.numero + installment.loanId"
+            :installment="installment"
+            variant="row"
+            @click="goToHistory(installment.loanId)"
+            class="cursor-pointer hover:bg-neutral-50"
+          />
         </div>
       </div>
     </template>

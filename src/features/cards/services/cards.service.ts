@@ -23,9 +23,10 @@ function ultimosDigitos(numero: string | null | undefined): string | null {
   return digitos.length >= 4 ? digitos.slice(-4) : null
 }
 
-export function mapearCartao(c: CartaoApi, indice: number): Cartao {
+export function mapearCartao(c: CartaoApi, indice: number, itemId: string): Cartao {
   return {
     id: c.id,
+    itemId,
     nome: c.nome,
     instituicao: c.instituicao ?? null,
     moeda: c.moeda ?? 'BRL',
@@ -46,7 +47,20 @@ export const cardsService = {
     const resposta = await http.get<ListarCartoesApi>(`${BASE}/${encodeURIComponent(itemId)}`, { signal })
     if (resposta.status === 202 || resposta.data.atualizando) return SINCRONIZANDO
 
-    return { atualizando: false, dados: resposta.data.cartoes.map(mapearCartao) }
+    return { atualizando: false, dados: resposta.data.cartoes.map((c, i) => mapearCartao(c, i, itemId)) }
+  },
+
+  async listAll(itemIds: string[], signal?: AbortSignal): Promise<ResultadoApi<Cartao[]>> {
+    console.log('listAll itemIds type:', typeof itemIds, 'is Array:', Array.isArray(itemIds), 'Value:', itemIds);
+    if (!Array.isArray(itemIds)) {
+       console.error('listAll: itemIds is not an array!', itemIds);
+       return { atualizando: false, dados: [] };
+    }
+    const responses = await Promise.all(itemIds.map((itemId) => this.list(itemId, signal)))
+    const cartoes = responses.flatMap((res) => (res.atualizando ? [] : res.dados))
+    const atualizando = responses.some((res) => res.atualizando)
+    
+    return atualizando ? SINCRONIZANDO : { atualizando: false, dados: cartoes }
   },
 
   async getInvoice(

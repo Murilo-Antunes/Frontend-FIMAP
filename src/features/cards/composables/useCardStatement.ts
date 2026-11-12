@@ -1,7 +1,7 @@
 import { refDebounced } from '@vueuse/core'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { toApiError } from '@/lib/api/types/api-error'
-import { useConnectionStore } from '@/stores/connection.store'
+import { useCardsStore } from '@/stores/cards.store'
 import { cardsService } from '../services/cards.service'
 import type { ExtratoCartao } from '../types/cards-statement.types'
 import {
@@ -19,7 +19,7 @@ const MAX_TENTATIVAS_SINCRONIZACAO = 10
 const ATRASO_BUSCA_MS = 250
 
 export function useCardStatement(cartaoId: () => string) {
-  const connection = useConnectionStore()
+  const cardsStore = useCardsStore()
 
   const dados = ref<ExtratoCartao | null>(null)
   const status = ref<StatusExtrato>('carregando')
@@ -48,9 +48,15 @@ export function useCardStatement(cartaoId: () => string) {
     controlador = atual
 
     try {
-      const itemId = await connection.requireItemId()
+      const id = cartaoId()
+      const cartao = cardsStore.getById(id)
+      const itemId = cartao?.itemId
+      if (!itemId) {
+        throw new Error('Conta do cartão não encontrada.')
+      }
+
       const resultado = await cardsService.getStatement(
-        cartaoId(),
+        id,
         itemId,
         atual.signal,
         mesSelecionado.value ?? undefined,
