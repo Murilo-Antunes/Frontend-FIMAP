@@ -78,7 +78,6 @@ const footnote = computed(() => {
           class="text-xs font-medium text-neutral-900 underline underline-offset-2"
           @click="emit('antecipar')"
         >
-          Antecipar
         </button>
         <p v-else class="text-xs text-neutral-400">
           {{ installment.isProxima ? 'Valor integral' : footnote }}
