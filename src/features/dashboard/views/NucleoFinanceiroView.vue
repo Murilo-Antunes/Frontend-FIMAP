@@ -48,26 +48,47 @@ const hasEmprestimosAtivos = computed(() => Boolean(emprestimos.value?.emprestim
 onMounted(async () => {
   try {
     loading.value = true;
-    const itemId = await connectionStore.requireItemId();
+    await connectionStore.load();
+    const itemIds = connectionStore.itemIds;
 
-    if (!itemId) {
-      error.value = 'Nenhuma conexão financeira ativa selecionada.';
+    if (itemIds.length === 0) {
+      error.value = 'Nenhuma conexão financeira ativa.';
       return;
     }
 
     const [saldoRes, cartoesRes, contasRes, investRes, empRes] = await Promise.all([
-      financeService.getSaldoNucleo(itemId),
-      financeService.getCartoes(itemId),
-      financeService.getContas(itemId),
-      financeService.getInvestimentos(itemId),
-      financeService.getEmprestimos(itemId),
+      Promise.all(itemIds.map(id => financeService.getSaldoNucleo(id))),
+      Promise.all(itemIds.map(id => financeService.getCartoes(id))),
+      Promise.all(itemIds.map(id => financeService.getContas(id))),
+      Promise.all(itemIds.map(id => financeService.getInvestimentos(id))),
+      Promise.all(itemIds.map(id => financeService.getEmprestimos(id))),
     ]);
 
-    saldo.value = saldoRes;
-    cartoes.value = cartoesRes;
-    contas.value = contasRes;
-    investimentos.value = investRes;
-    emprestimos.value = empRes;
+    saldo.value = {
+      atualizando: saldoRes.some(r => r.atualizando),
+      saldoTotal: saldoRes.reduce((acc, curr) => acc + curr.saldoTotal, 0),
+      contas: saldoRes.flatMap(r => r.contas)
+    };
+    cartoes.value = {
+      atualizando: cartoesRes.some(r => r.atualizando),
+      total: cartoesRes.reduce((acc, curr) => acc + curr.total, 0),
+      cartoes: cartoesRes.flatMap(r => r.cartoes)
+    };
+    contas.value = {
+      atualizando: contasRes.some(r => r.atualizando),
+      total: contasRes.reduce((acc, curr) => acc + curr.total, 0),
+      contas: contasRes.flatMap(r => r.contas)
+    };
+    investimentos.value = {
+      atualizando: investRes.some(r => r.atualizando),
+      total: investRes.reduce((acc, curr) => acc + curr.total, 0),
+      investimentos: investRes.flatMap(r => r.investimentos)
+    };
+    emprestimos.value = {
+      atualizando: empRes.some(r => r.atualizando),
+      total: empRes.reduce((acc, curr) => acc + curr.total, 0),
+      emprestimos: empRes.flatMap(r => r.emprestimos)
+    };
   } catch (err: any) {
     error.value = 'Erro ao carregar os dados do Núcleo Financeiro.';
   } finally {
@@ -175,12 +196,12 @@ onMounted(async () => {
 
             <div v-if="hasCartoes" class="bg-gray-50 p-4 rounded-xl space-y-1">
               <div class="flex justify-between items-baseline">
-                <span class="text-xs text-gray-500">Fatura Aberta</span>
-                <span class="text-base font-bold text-gray-900">{{ formatCurrency(cartoes!.cartoes[0].faturaAberta) }}</span>
+                <span class="text-xs text-gray-500">Total Faturas Abertas</span>
+                <span class="text-base font-bold text-gray-900">{{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.faturaAberta, 0)) }}</span>
               </div>
               <div class="flex justify-between text-[11px] text-gray-400">
-                <span>Limite: {{ formatCurrency(cartoes!.cartoes[0].limite) }}</span>
-                <span class="text-emerald-600 font-medium">Disponível: {{ formatCurrency(cartoes!.cartoes[0].limiteDisponivel) }}</span>
+                <span>Limite Total: {{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limite, 0)) }}</span>
+                <span class="text-emerald-600 font-medium">Disponível Total: {{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limiteDisponivel, 0)) }}</span>
               </div>
             </div>
             <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
@@ -275,29 +296,17 @@ onMounted(async () => {
           <div v-if="hasEmprestimosAtivos" class="space-y-4">
             <div class="bg-gray-50 p-4 rounded-xl flex justify-between items-center">
               <div>
-                <span class="text-xs text-gray-400 block">Valor Contratado</span>
-                <span class="font-bold text-sm text-gray-900">{{ formatCurrency(emprestimos!.emprestimos[0].valorContratado) }}</span>
+                <span class="text-xs text-gray-400 block">Total Contratado</span>
+                <span class="font-bold text-sm text-gray-900">{{ formatCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.valorContratado, 0)) }}</span>
               </div>
               <div class="text-right">
-                <span class="text-xs text-gray-400 block">Saldo Devedor</span>
-                <span class="font-bold text-sm text-rose-600">{{ formatCurrency(emprestimos!.emprestimos[0].saldoDevedor) }}</span>
+                <span class="text-xs text-gray-400 block">Total Devedor</span>
+                <span class="font-bold text-sm text-rose-600">{{ formatCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.saldoDevedor, 0)) }}</span>
               </div>
             </div>
 
-            <div class="space-y-1">
-              <div class="flex justify-between text-xs text-gray-500">
-                <span>Progresso de amortização</span>
-                <span>
-                  {{ emprestimos!.emprestimos[0].parcelasPagas }} de {{ emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes }} pagas 
-                  ({{ Math.round((emprestimos!.emprestimos[0].parcelasPagas / (emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes)) * 100) }}%)
-                </span>
-              </div>
-              <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  class="bg-black h-full" 
-                  :style="{ width: `${(emprestimos!.emprestimos[0].parcelasPagas / (emprestimos!.emprestimos[0].parcelasPagas + emprestimos!.emprestimos[0].parcelasRestantes)) * 100}%` }"
-                ></div>
-              </div>
+            <div class="text-xs text-gray-500">
+              {{ emprestimos!.emprestimos.length }} contrato(s) ativo(s).
             </div>
           </div>
           <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
