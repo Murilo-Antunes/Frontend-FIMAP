@@ -42,11 +42,13 @@ export const loansService = {
   },
 
   async getLoanDetailAcrossAll(itemIds: string[], loanId: string, limitePagas = 10, signal?: AbortSignal) {
+    console.log('DEBUG: Tentando itemIds:', itemIds); // --- ADICIONE ESTE LOG ---
     for (const itemId of itemIds) {
       try {
+        console.log('DEBUG: Tentando itemId:', itemId); // --- ADICIONE ESTE LOG ---
         return await this.getLoanDetail(itemId, loanId, limitePagas, signal)
       } catch (e) {
-        // Tenta na próxima conexão
+        console.log(`DEBUG: Falha com itemId ${itemId}, tentando próximo...`); // --- ADICIONE ESTE LOG ---
       }
     }
     throw new Error('Empréstimo não encontrado.')

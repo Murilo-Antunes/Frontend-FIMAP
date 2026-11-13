@@ -136,7 +136,12 @@ onBeforeUnmount(() => controller?.abort())
           </h2>
           <span class="text-xs text-neutral-400">Valores compensados via Open Finance</span>
         </div>
-        <div class="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white px-5">
+        
+        <div v-if="detail.pagasVisiveis.length === 0" class="rounded-2xl border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
+          Nenhuma parcela paga registrada neste contrato.
+        </div>
+        
+        <div v-else class="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white px-5">
           <LoanInstallmentRow
             v-for="installment in detail.pagasVisiveis"
             :key="installment.numero"

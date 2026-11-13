@@ -17,7 +17,8 @@ const TIPO_LABELS: Record<string, string> = {
   CONSIGNADO: 'Consignado',
 }
 
-export function formatCurrencyBRL(value: number): string {
+export function formatCurrencyBRL(value: number | null | undefined): string {
+  if (value == null || isNaN(value)) return 'R$ 0,00'
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
@@ -63,14 +64,14 @@ function mapInstallment(
 
   const economiaEstimadaAntecipacao =
     raw.status === 'PENDENTE' && !isProxima && descontoAntecipacaoPercentual
-      ? Math.round(raw.valor * (descontoAntecipacaoPercentual / 100) * 100) / 100
+      ? Math.round((raw.valor ?? 0) * (descontoAntecipacaoPercentual / 100) * 100) / 100
       : null
 
   return {
     numero: raw.numero,
     totalParcelas,
     vencimento,
-    valor: raw.valor,
+    valor: raw.valor ?? 0,
     status: raw.status,
     dataPagamento: raw.dataPagamento ? dayjs(raw.dataPagamento).toDate() : null,
     isProxima,
@@ -87,7 +88,21 @@ function mapInstallment(
 export function mapLoanDetail(data: LoanDetailApiResponse): LoanDetail | null {
   if (!data.emprestimo) return null
 
+  console.log('DEBUG: mapLoanDetail data:', data)
+
   const loan = mapLoan(data.emprestimo)
+  
+  // O backend mudou a estrutura para usar 'resumo' e 'parcelas',
+  // mas o log mostra que 'resumo' e 'parcelas' não estão no nível raiz.
+  // Pelo log: { atualizando: false, emprestimo: {...}, totalParcelas: 130, pendentes: [...], ... }
+  // A estrutura que você me passou na mensagem anterior era:
+  // {
+  //     resumo: { ... },
+  //     parcelas: { ... }
+  // }
+  // Mas o log mostra que o backend continua enviando 'pendentes' e 'amortizadas' na raiz.
+  
+  // Vamos adaptar para a estrutura que o log está mostrando:
   const totalParcelas = data.totalParcelas ?? loan.totalParcelas
   const desconto = data.emprestimo.descontoAntecipacaoPercentual ?? null
 
@@ -112,7 +127,7 @@ export function mapLoanDetail(data: LoanDetailApiResponse): LoanDetail | null {
     amortizadas,
     pagasVisiveis,
     pagasTemMais: data.pagas?.temMais ?? false,
-    pagasResumoRestante: data.pagas?.resumoRestante ?? null,
+    pagasResumoRestante: null,
   }
 }
 

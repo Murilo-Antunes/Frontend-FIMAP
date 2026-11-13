@@ -37,24 +37,33 @@ async function loadLoans() {
   try {
     await connectionStore.load()
     const itemIds = connectionStore.itemIds
+    console.log('DEBUG: itemIds:', itemIds);
     const response = await loansService.listAllLoans(itemIds, controller.signal)
     syncing.value = response.atualizando
+    console.log('DEBUG: response:', response);
 
     loans.value = await Promise.all(
       response.emprestimos.map(async (raw: any) => {
-        // limitePagas: 3 é suficiente — só precisamos de até 3 linhas pra pré-visualização.
-        const data = await loansService.getLoanDetail(raw.itemId, raw.id, 3, controller!.signal)
-        const detail = mapLoanDetail(data)
-        const loan = detail?.loan ?? mapLoan(raw)
+        try {
+            // limitePagas: 3 é suficiente — só precisamos de até 3 linhas pra pré-visualização.
+            const data = await loansService.getLoanDetail(raw.itemId, raw.id, 3, controller!.signal)
+            console.log('DEBUG: LoanDetail:', raw.id, data);
+            const detail = mapLoanDetail(data)
+            const loan = detail?.loan ?? mapLoan(raw)
 
-        const preview = detail
-          ? [...detail.pendentes, ...detail.pagasVisiveis].sort((a, b) => b.numero - a.numero).slice(0, 3)
-          : []
+            const preview = detail
+            ? [...detail.pendentes, ...detail.pagasVisiveis].sort((a, b) => b.numero - a.numero).slice(0, 3)
+            : []
 
-        return { loan, preview }
+            return { loan, preview }
+        } catch (e) {
+            console.error('DEBUG: Erro ao carregar detalhe do empréstimo:', raw.id, e);
+            return { loan: mapLoan(raw), preview: [] }
+        }
       }),
     )
   } catch (error) {
+    console.error('DEBUG: Erro geral:', error);
     errorMessage.value = toApiError(error).mensagem
   } finally {
     loading.value = false

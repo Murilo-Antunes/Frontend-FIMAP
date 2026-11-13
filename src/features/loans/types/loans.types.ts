@@ -55,15 +55,21 @@ export interface LoanPaidSummaryRaw {
 export interface LoanDetailApiResponse {
   atualizando: boolean
   emprestimo?: LoanRaw
-  totalParcelas?: number
-  pendentes?: LoanInstallmentRaw[]
-  amortizadas?: LoanInstallmentRaw[]
-  pagas?: {
-    itens: LoanInstallmentRaw[]
-    limite: number
-    total: number
-    temMais: boolean
-    resumoRestante: LoanPaidSummaryRaw | null
+  resumo: {
+    totalParcelas: number
+    parcelasPagas: number
+    parcelasRestantes: number
+    parcelasPagasDetalhadas: number
+  }
+  parcelas: {
+    pendentes: LoanInstallmentRaw[]
+    amortizadas: LoanInstallmentRaw[]
+    pagas: {
+      itens: LoanInstallmentRaw[]
+      limite: number
+      total: number
+      temMais: boolean
+    }
   }
 }
 
