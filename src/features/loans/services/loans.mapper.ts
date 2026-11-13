@@ -91,17 +91,6 @@ export function mapLoanDetail(data: LoanDetailApiResponse): LoanDetail | null {
   console.log('DEBUG: mapLoanDetail data:', data)
 
   const loan = mapLoan(data.emprestimo)
-  
-  // O backend mudou a estrutura para usar 'resumo' e 'parcelas',
-  // mas o log mostra que 'resumo' e 'parcelas' não estão no nível raiz.
-  // Pelo log: { atualizando: false, emprestimo: {...}, totalParcelas: 130, pendentes: [...], ... }
-  // A estrutura que você me passou na mensagem anterior era:
-  // {
-  //     resumo: { ... },
-  //     parcelas: { ... }
-  // }
-  // Mas o log mostra que o backend continua enviando 'pendentes' e 'amortizadas' na raiz.
-  
   // Vamos adaptar para a estrutura que o log está mostrando:
   const totalParcelas = data.totalParcelas ?? loan.totalParcelas
   const desconto = data.emprestimo.descontoAntecipacaoPercentual ?? null
