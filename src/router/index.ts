@@ -3,6 +3,7 @@ import { authGuard } from './guards/auth.guard'
 import { connectionGuard } from './guards/connection.guard'
 import { cardsRoutes } from './routes/cards.routes'
 import { setupCardsTransition } from './guards/cards-transition'
+import { metasRoutes } from './routes/metas.routes'
 
 
 declare module 'vue-router' {
@@ -81,6 +82,7 @@ export const router = createRouter({
           meta: { requiresAuth: true, requiresConnection: true },
         },
         ...cardsRoutes,
+        ...metasRoutes,
         {
           path: 'cartoes/:cartaoId/extrato', // ajuste ao padrão da sua rota card-detail
           name: 'card-statement',

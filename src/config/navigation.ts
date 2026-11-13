@@ -34,7 +34,7 @@ export const MAIN_NAV: NavItem[] = [
   { key: 'home', label: 'Início', icon: Home, to: '/dashboard' },
   { key: 'chat', label: 'Chat IA', icon: Bot },
   { key: 'simulator', label: 'Simular', icon: Calculator },
-  { key: 'goals', label: 'Metas', icon: Flag },
+  { key: 'goals', label: 'Metas', icon: Flag, to: '/metas' },
   { key: 'community', label: 'Social', icon: Users },
 ]
 
