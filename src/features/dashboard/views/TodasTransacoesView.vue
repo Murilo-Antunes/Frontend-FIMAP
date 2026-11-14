@@ -8,13 +8,19 @@ import { Search, ShoppingBag, ShoppingCart, ArrowDownLeft, Receipt } from 'lucid
 const connectionStore = useConnectionStore();
 
 const searchQuery = ref('');
-const selectedPeriod = ref('Outubro 2026');
+const date = new Date();
+const currentMonthYear = `${date.toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + date.toLocaleString('pt-BR', { month: 'long' }).slice(1)} ${date.getFullYear()}`;
+
+const selectedPeriod = ref(currentMonthYear);
+const customPeriod = ref({ start: '', end: '' });
 const selectedAccount = ref<string | number>('Todas');
 const filterType = ref<'TODAS' | 'ENTRADAS' | 'SAIDAS'>('TODAS');
 
 const loading = ref(true);
 const error = ref<string | null>(null);
 const transacoes = ref<TransacaoApiItem[]>([]);
+
+const periodOptions = computed(() => [currentMonthYear, 'Setembro 2026', 'Agosto 2026', 'Personalizado']);
 
 function formatCurrency(val: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(val || 0));
@@ -59,19 +65,39 @@ const months: Record<string, string> = {
 async function carregarTransacoes(itemId: string | number) {
   loading.value = true;
   error.value = null;
+  transacoes.value = []; // Limpa transações anteriores
+
   try {
-    // Se selecionou "Todas", define qual itemId usar (primeiro disponível)
-    const conn = itemId === 'Todas' ? connectionStore.connections[0] : connectionStore.connections.find(c => c.id === itemId);
-    const idToFetch = conn ? conn.external_connection_id : null;
-    
-    if (!idToFetch) {
-      error.value = 'Nenhuma conexão financeira ativa selecionada.';
-      transacoes.value = [];
-      return;
+    if (itemId === 'Todas') {
+      // Busca transações de cada conexão individualmente e concatena
+      const ids = connectionStore.connections.map(c => c.external_connection_id);
+      const allTransacoes: TransacaoApiItem[] = [];
+      
+      for (const id of ids) {
+        if (id) {
+          try {
+            const res = await financeService.getTransacoes(String(id));
+            if (res && res.transacoes) {
+              allTransacoes.push(...res.transacoes);
+            }
+          } catch (e) {
+            console.error(`Erro ao buscar transações para ${id}:`, e);
+          }
+        }
+      }
+      transacoes.value = allTransacoes;
+    } else {
+      const conn = connectionStore.connections.find(c => c.id === itemId);
+      const idToFetch = conn ? conn.external_connection_id : null;
+      
+      if (!idToFetch) {
+        error.value = 'Nenhuma conexão financeira ativa selecionada.';
+        return;
+      }
+      
+      const res = await financeService.getTransacoes(String(idToFetch));
+      transacoes.value = res?.transacoes || [];
     }
-    
-    const res = await financeService.getTransacoes(String(idToFetch));
-    transacoes.value = res?.transacoes || [];
   } catch (err: any) {
     error.value = 'Erro ao carregar as transações.';
   } finally {
@@ -100,6 +126,11 @@ const transacoesFiltradas = computed(() => {
       const [monthName, year] = selectedPeriod.value.split(' ');
       const month = months[monthName];
       if (month && year && !t.data.startsWith(`${year}-${month}`)) {
+        return false;
+      }
+    } else if (customPeriod.value.start && customPeriod.value.end) {
+      const transactionDate = t.data.split('T')[0];
+      if (transactionDate < customPeriod.value.start || transactionDate > customPeriod.value.end) {
         return false;
       }
     }
@@ -155,7 +186,6 @@ onMounted(async () => {
       <p class="text-sm text-gray-500">Veja suas transações filtradas por data</p>
     </div>
 
-    <!-- Search & Filters Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div class="relative flex-1 max-w-md">
         <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -167,18 +197,25 @@ onMounted(async () => {
         />
       </div>
 
-      <div class="flex items-center space-x-2 text-xs font-medium">
-        <button
-          v-for="period in ['Outubro 2026', 'Setembro 2026', 'Agosto 2026', 'Personalizado']"
-          :key="period"
-          @click="selectedPeriod = period"
-          :class="[
-            'px-3 py-1.5 rounded-lg transition',
-            selectedPeriod === period ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          ]"
-        >
-          {{ period }}
-        </button>
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center space-x-2 text-xs font-medium">
+          <button
+            v-for="period in periodOptions"
+            :key="period"
+            @click="selectedPeriod = period"
+            :class="[
+              'px-3 py-1.5 rounded-lg transition',
+              selectedPeriod === period ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            ]"
+          >
+            {{ period }}
+          </button>
+        </div>
+        
+        <div v-if="selectedPeriod === 'Personalizado'" class="flex gap-2">
+          <input v-model="customPeriod.start" type="date" class="px-2 py-1 border rounded text-xs" />
+          <input v-model="customPeriod.end" type="date" class="px-2 py-1 border rounded text-xs" />
+        </div>
       </div>
     </div>
 
@@ -194,17 +231,17 @@ onMounted(async () => {
         <span v-if="selectedAccount === 'Todas'">✓ </span>Todas as Contas
       </button>
 
-      <button
-        v-for="conn in connectionStore.connections"
-        :key="conn.id"
-        @click="selectedAccount = conn.id"
-        :class="[
-          'px-3 py-1 rounded-full font-medium transition',
-          selectedAccount === conn.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-        ]"
-      >
-        <span v-if="selectedAccount === conn.id">✓ </span>{{ conn.instituicao || 'Banco Conectado' }}
-      </button>
+        <button
+          v-for="conn in connectionStore.connections"
+          :key="conn.id"
+          @click="selectedAccount = conn.id"
+          :class="[
+            'px-3 py-1 rounded-full font-medium transition',
+            selectedAccount === conn.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          ]"
+        >
+          <span v-if="selectedAccount === conn.id">✓ </span>{{ (conn as any).nome_instituicao || conn.instituicao || 'Banco Conectado' }}
+        </button>
 
       <div class="h-4 w-px bg-gray-300 mx-1"></div>
 
