@@ -37,7 +37,7 @@ function formatDate(dateStr: string): string {
 }
 
 function isPositive(t: TransacaoApiItem): boolean {
-  return t.tipo === 'ENTRADA' || t.tipo === 'RECEITA';
+  return (t.valor || 0) > 0;
 }
 
 const months: Record<string, string> = {
@@ -255,8 +255,8 @@ onMounted(async () => {
 
           <div class="bg-black text-white p-3 rounded-xl">
             <span class="text-xs text-gray-400 block">Líquido</span>
-            <span :class="['text-sm font-bold', (totalEntradas - totalSaidas) >= 0 ? 'text-emerald-400' : 'text-rose-400']">
-              {{ (totalEntradas - totalSaidas) >= 0 ? '+' : '' }} {{ formatCurrency(totalEntradas - totalSaidas) }}
+            <span :class="['text-sm font-bold', (totalEntradas + totalSaidas) >= 0 ? 'text-emerald-400' : 'text-rose-400']">
+              {{ (totalEntradas + totalSaidas) >= 0 ? '+' : '' }} {{ formatCurrency(totalEntradas + totalSaidas) }}
             </span>
           </div>
         </div>
