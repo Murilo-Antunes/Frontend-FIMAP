@@ -13,6 +13,7 @@ export interface CreateConnectionPayload {
   provedor: string
   external_connection_id: string
   status: boolean
+  nome_instituicao?: string
 }
 
 /** Conexão (item do Pluggy) vinculada a um usuário. */

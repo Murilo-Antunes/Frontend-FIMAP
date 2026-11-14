@@ -45,6 +45,7 @@ export const connectionService = {
     idUsuario: number,
     consentimentoApi: string,
     externalConnectionId: string,
+    nomeInstituicao: string,
   ): Promise<BankConnection> {
     const payload: CreateConnectionPayload = {
       consentimento_api: consentimentoApi,
@@ -52,6 +53,7 @@ export const connectionService = {
       provedor: 'pluggy',
       external_connection_id: externalConnectionId,
       status: true,
+      nome_instituicao: nomeInstituicao,
     }
     
     const { data } = await http.post<BankConnection>(`${BASE}/conexoes/${idUsuario}`, payload)

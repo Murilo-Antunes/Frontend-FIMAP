@@ -168,7 +168,7 @@ async function excluir() {
         </span>
       </div>
 
-      <div class="mt-4 rounded-2xl border border-gray-200 p-5">
+      <div class="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold text-gray-900">{{ metaOriginal.nome }}</h2>
           <span class="text-sm font-semibold text-gray-700">{{ percentual }}%</span>
@@ -195,7 +195,7 @@ async function excluir() {
             <input
               v-model="nomeObjetivo"
               type="text"
-              class="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+              class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
             />
           </div>
 
@@ -208,7 +208,7 @@ async function excluir() {
               type="number"
               min="0"
               step="0.01"
-              class="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-lg font-semibold focus:border-gray-400 focus:outline-none"
+              class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-lg font-semibold focus:border-gray-400 focus:outline-none"
             />
             <div class="mt-2 flex gap-2">
               <span class="text-xs text-gray-400 self-center">Ajustar:</span>
@@ -232,7 +232,7 @@ async function excluir() {
               <input
                 v-model="dataAlvo"
                 type="month"
-                class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+                class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
               />
             </div>
             <div>
@@ -242,7 +242,7 @@ async function excluir() {
                 type="number"
                 min="0"
                 step="0.01"
-                class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+                class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
               />
             </div>
           </div>
@@ -268,7 +268,7 @@ async function excluir() {
 
           <button
             type="button"
-            class="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             @click="alternarPausa"
           >
             <component :is="pausada ? Play : Pause" class="h-4 w-4" />

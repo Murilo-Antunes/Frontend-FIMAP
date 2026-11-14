@@ -32,7 +32,7 @@ function selecionar(id: number) {
     <div class="relative mt-2">
       <button
         type="button"
-        class="flex w-full items-center justify-between rounded-xl border border-gray-200 px-4 py-3"
+        class="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3"
         :class="editavel === false ? 'cursor-default' : 'cursor-pointer hover:border-gray-300'"
         @click="editavel !== false && (aberto = !aberto)"
       >

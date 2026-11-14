@@ -23,6 +23,8 @@ const errorMessage = ref('')
 const pendingItemId = ref<string | null>(null)
 /** consentId retornado pelo Pluggy Connect */
 const pendingConsentId = ref<string | null>(null)
+/** Nome da instituição cujo registro no backend falhou */
+const pendingNomeInstituicao = ref<string | null>(null)
 
 let widget: PluggyConnectInstance | null = null
 
@@ -35,7 +37,7 @@ const buttonLabel = computed(() => {
 })
 
 /** Registra o item no backend e segue para o dashboard. */
-async function saveItem(itemId: string, consentId: string) {
+async function saveItem(itemId: string, consentId: string, nomeInstituicao: string) {
     if (!auth.usuario) return
     step.value = 'saving'
     errorMessage.value = ''
@@ -44,6 +46,7 @@ async function saveItem(itemId: string, consentId: string) {
       auth.usuario.id,
       consentId,
       itemId,
+      nomeInstituicao,
     )
     // Busca os dados reais da conexão no backend
     await connection.load()
@@ -52,6 +55,7 @@ async function saveItem(itemId: string, consentId: string) {
     }
     pendingItemId.value = null
     pendingConsentId.value = null
+    pendingNomeInstituicao.value = null
     await router.replace({ name: 'dashboard' })
 
     
@@ -59,6 +63,7 @@ async function saveItem(itemId: string, consentId: string) {
     console.error('ConnectBankView - Erro ao salvar conexão:', error)
     pendingItemId.value = itemId
     pendingConsentId.value = consentId
+    pendingNomeInstituicao.value = nomeInstituicao
     errorMessage.value = `Sua conta foi conectada, mas não conseguimos salvar a conexão. ${toApiError(error).mensagem}`
     step.value = 'idle'
   }
@@ -68,8 +73,8 @@ async function onConnect() {
   if (busy.value || !auth.usuario) return
 
   // Conexão já feita, só faltou salvar
-  if (pendingItemId.value && pendingConsentId.value) {
-    await saveItem(pendingItemId.value, pendingConsentId.value)
+  if (pendingItemId.value && pendingConsentId.value && pendingNomeInstituicao.value) {
+    await saveItem(pendingItemId.value, pendingConsentId.value, pendingNomeInstituicao.value)
     return
   }
 
@@ -85,13 +90,14 @@ async function onConnect() {
       includeSandbox: env.pluggyIncludeSandbox,
       onSuccess: ({ item }) => {
         const consentId = item.consentId || item.id
+        const nomeInstituicao = item.connector?.name || 'Desconhecido'
           if (!consentId) {
             errorMessage.value = 'Não foi possível identificar o consentimento.'
             step.value = 'idle'
             return
           }
 
-          void saveItem(item.id, consentId)
+          void saveItem(item.id, consentId, nomeInstituicao)
             .catch((error) => {
               console.error('Erro inesperado ao salvar conexão:', error)
             })

@@ -46,8 +46,8 @@ const projecao = computed(() =>
 onMounted(async () => {
   const idUsuario = authStore.usuario?.id
   const [categoriasApi, contasApi] = await Promise.all([
-    categoriasService.listar(idUsuario ?? 0),
-    contasRendimentoService.listar(idUsuario ?? 0),
+    categoriasService.listar(idUsuario??0),
+    contasRendimentoService.listar(idUsuario??0),
   ])
   categorias.value = categoriasApi
   contas.value = contasApi
@@ -132,7 +132,7 @@ async function confirmar() {
             v-model="categoriaPersonalizadaNome"
             type="text"
             placeholder="Ex.: Academia Em Casa"
-            class="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+            class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
           />
           <p v-if="erros.categoriaPersonalizadaNome" class="mt-1 text-xs text-red-500">
             {{ erros.categoriaPersonalizadaNome }}
@@ -145,7 +145,7 @@ async function confirmar() {
             v-model="nomeObjetivo"
             type="text"
             placeholder="Ex.: Reserva de Emergência 2026"
-            class="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+            class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
           />
           <p v-if="erros.nomeObjetivo" class="mt-1 text-xs text-red-500">{{ erros.nomeObjetivo }}</p>
         </div>
@@ -156,11 +156,11 @@ async function confirmar() {
             v-model="descricao"
             rows="4"
             placeholder="Para que serve essa meta?"
-            class="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+            class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
           />
         </div>
 
-        <div class="rounded-2xl border border-gray-200 p-5">
+        <div class="rounded-2xl border border-gray-200 bg-white p-5">
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-gray-700">Valor Total Desejado</span>
             <span class="text-xs text-gray-400">Meta final</span>
@@ -199,7 +199,7 @@ async function confirmar() {
               type="number"
               min="0"
               step="0.01"
-              class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+              class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
             />
             <p v-if="erros.valorInicio" class="mt-1 text-xs text-red-500">{{ erros.valorInicio }}</p>
           </div>
@@ -208,13 +208,13 @@ async function confirmar() {
             <input
               v-model="dataAlvo"
               type="month"
-              class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+              class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
             />
             <p v-if="erros.dataAlvo" class="mt-1 text-xs text-red-500">{{ erros.dataAlvo }}</p>
           </div>
         </div>
 
-        <div class="rounded-xl border border-gray-200 px-4 py-3">
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
           <p class="text-sm font-medium text-gray-700">Aporte Mensal Previsto</p>
           <p class="text-xs text-gray-400">Valor a guardar todo mês</p>
           <input

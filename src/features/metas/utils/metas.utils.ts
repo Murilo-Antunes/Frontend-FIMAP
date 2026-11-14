@@ -5,6 +5,8 @@ import {
   Plane,
   Car,
   TrendingUp,
+  PiggyBank,
+  GraduationCap,
   Star,
   type LucideIcon,
 } from 'lucide-vue-next'
@@ -71,25 +73,34 @@ export function percentualProgresso(meta: Pick<Meta, 'valorTotal' | 'valorDeseja
 }
 
 /**
- * Ícone por categoria. As 5 categorias padrão do sistema têm ícone fixo;
- * qualquer categoria personalizada cai no ícone de estrela.
+ * Ícone por categoria. Casamento por substring (não nome exato) pra aguentar variações
+ * de texto ("Viagem", "Viagem e Férias", "Viagem & Férias" caem todas no mesmo ícone).
+ * Só cai na estrela quando nenhuma regra bate — ou seja, estrela é mesmo exclusiva de
+ * categoria personalizada que não se encaixa em nenhum tema conhecido.
  * (tbl_categoria_meta não guarda ícone — resolvido só no front, ver observações.)
  */
-const ICONES_POR_NOME: Record<string, LucideIcon> = {
-  'reserva emergência': Shield,
-  'reserva de emergência': Shield,
-  'compra imóvel': Home,
-  'compra de imóvel': Home,
-  'viagem & férias': Plane,
-  'viagem e férias': Plane,
-  'veículo novo': Car,
-  'liberdade fin.': TrendingUp,
-  'liberdade financeira': TrendingUp,
+function normalizarNomeCategoria(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
 }
 
+const REGRAS_ICONE: { chaves: string[]; icone: LucideIcon }[] = [
+  { chaves: ['reserva', 'emergencia'], icone: Shield },
+  { chaves: ['imovel', 'casa', 'apartamento', 'moradia'], icone: Home },
+  { chaves: ['viagem', 'ferias'], icone: Plane },
+  { chaves: ['veiculo', 'carro', 'moto'], icone: Car },
+  { chaves: ['aposentadoria', 'previdencia'], icone: PiggyBank },
+  { chaves: ['educacao', 'estudo', 'curso', 'faculdade'], icone: GraduationCap },
+  { chaves: ['liberdade'], icone: TrendingUp },
+]
+
 export function getIconePorCategoria(nomeCategoria: string): LucideIcon {
-  const chave = nomeCategoria.trim().toLowerCase()
-  return ICONES_POR_NOME[chave] ?? Star
+  const chaveBusca = normalizarNomeCategoria(nomeCategoria)
+  const regra = REGRAS_ICONE.find((r) => r.chaves.some((chave) => chaveBusca.includes(chave)))
+  return regra?.icone ?? Star
 }
 
 /** Mapeia o formato snake_case da API para o modelo usado no front. */
