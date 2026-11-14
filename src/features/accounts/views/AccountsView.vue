@@ -64,7 +64,7 @@ function goConnect(): void {
           <span class="text-xs text-neutral-500">Dados via Open Finance</span>
         </div>
         <div class="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <InstitutionCard v-for="i in institutions" :key="i.itemId" :institution="i" />
+          <InstitutionCard v-for="i in institutions" :key="i.itemId" :institution="i" @deleted="reload" />
         </div>
       </section>
 

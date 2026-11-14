@@ -69,4 +69,14 @@ export const connectionService = {
     
     return conexoes
   },
+
+  async deleteConexoes(idUsuario: number, id: string | number): Promise<BankConnection[]> {
+    const { data } = await http.delete<BankConnectionsResponse>(`${BASE}/conexoes/${idUsuario}/${id}`)
+    
+    const conexoes = data.conexoes ?? []
+    
+    return conexoes
+  },
 }
+
+
