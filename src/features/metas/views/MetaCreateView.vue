@@ -15,6 +15,7 @@ import CardProjecaoCriacao from '../components/CardProjecaoCriacao.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const idUsuarioAtual = authStore.usuario?.id
 
 const categorias = ref<CategoriaMeta[]>([])
 const contas = ref<ContaRendimento[]>([])
@@ -58,6 +59,11 @@ function adicionarValor(valor: number) {
   valorDesejado.value = Number(valorDesejado.value) + valor
 }
 
+function aoAtualizarCdi({ id, percentualCdi }: { id: number; percentualCdi: number }) {
+  const conta = contas.value.find((c) => c.id === id)
+  if (conta) conta.percentualCdi = percentualCdi
+}
+
 async function confirmar() {
   erroGeral.value = null
   erros.value = {}
@@ -78,6 +84,9 @@ async function confirmar() {
     for (const issue of resultado.error.issues) {
       erros.value[String(issue.path[0])] = issue.message
     }
+    // Loga sempre, mesmo pra campo que não tem <p v-if="erros.algumCampo"> no template —
+    // assim dá pra ver no console se "não acontece nada" é validação falhando sem feedback visual.
+    console.warn('Formulário de meta não passou na validação:', erros.value)
     return
   }
 
@@ -107,6 +116,7 @@ async function confirmar() {
 
     router.push({ name: 'metas' })
   } catch (e) {
+    console.error('Erro ao criar meta:', e)
     erroGeral.value = 'Não foi possível criar a meta agora. Tente novamente.'
   } finally {
     enviando.value = false
@@ -227,7 +237,12 @@ async function confirmar() {
           <p v-if="erros.aporteMensal" class="text-xs text-red-500">{{ erros.aporteMensal }}</p>
         </div>
 
-        <SeletorContaRendimento v-model="idContaVinculada" :contas="contas" />
+        <SeletorContaRendimento
+          v-model="idContaVinculada"
+          :contas="contas"
+          :id-usuario="idUsuarioAtual??0"
+          @cdi-atualizado="aoAtualizarCdi"
+        />
       </div>
     </div>
 

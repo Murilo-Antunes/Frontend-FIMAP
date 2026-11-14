@@ -9,10 +9,13 @@ export const metaFormSchema = z
     categoriaId: z.union([z.number().int().positive(), z.literal(CATEGORIA_NOVA)], {
       required_error: 'Selecione uma categoria',
     }),
+    // Sem .min(2) aqui de propósito: esse campo só importa quando categoriaId === CATEGORIA_NOVA.
+    // Com categoria padrão, o ref fica como string vazia (não undefined), e .optional() só libera
+    // undefined — então um .min(2) direto no campo barraria a validação mesmo pra categoria padrão.
+    // O tamanho mínimo é checado no superRefine, só quando a categoria "Personalizado" é usada.
     categoriaPersonalizadaNome: z
       .string()
       .trim()
-      .min(2, 'Dê um nome pra categoria')
       .max(80, 'Nome muito longo')
       .optional(),
     nomeObjetivo: z
@@ -34,12 +37,15 @@ export const metaFormSchema = z
     idContaVinculada: z.number().int().positive().nullable().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.categoriaId === CATEGORIA_NOVA && !data.categoriaPersonalizadaNome) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['categoriaPersonalizadaNome'],
-        message: 'Dê um nome pra categoria personalizada',
-      })
+    if (data.categoriaId === CATEGORIA_NOVA) {
+      const nome = data.categoriaPersonalizadaNome?.trim() ?? ''
+      if (nome.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['categoriaPersonalizadaNome'],
+          message: nome.length === 0 ? 'Dê um nome pra categoria personalizada' : 'Nome muito curto (mínimo 2 letras)',
+        })
+      }
     }
     if (data.valorDesejado <= data.valorInicio) {
       ctx.addIssue({

@@ -1,25 +1,62 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import type { ContaRendimento } from '../types/metas.types'
+import { contasRendimentoService } from '../services/contas-rendimento.service'
 
 const props = defineProps<{
   contas: ContaRendimento[]
   modelValue: number | null
+  idUsuario: number
   editavel?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: number]
+  /** Avisa o pai que o CDI de uma conta foi definido manualmente, pra atualizar a lista local. */
+  'cdi-atualizado': [payload: { id: number; percentualCdi: number }]
 }>()
 
 const aberto = ref(false)
+const percentualManualInput = ref<number | null>(null)
+const salvandoManual = ref(false)
+const erroManual = ref<string | null>(null)
 
 const contaSelecionada = computed(() => props.contas.find((c) => c.id === props.modelValue) ?? null)
+
+// Limpa o formulário de CDI manual sempre que a conta selecionada muda.
+watch(
+  () => contaSelecionada.value?.id,
+  () => {
+    percentualManualInput.value = null
+    erroManual.value = null
+  },
+)
 
 function selecionar(id: number) {
   emit('update:modelValue', id)
   aberto.value = false
+}
+
+async function salvarCdiManual() {
+  if (!contaSelecionada.value) return
+
+  if (percentualManualInput.value === null || Number.isNaN(percentualManualInput.value) || percentualManualInput.value < 0) {
+    erroManual.value = 'Informe um percentual válido (ex.: 100).'
+    return
+  }
+
+  erroManual.value = null
+  salvandoManual.value = true
+  try {
+    const percentualCdi = percentualManualInput.value / 100
+    await contasRendimentoService.atualizarCdiManual(props.idUsuario, contaSelecionada.value.id, percentualCdi)
+    emit('cdi-atualizado', { id: contaSelecionada.value.id, percentualCdi })
+  } catch (e) {
+    erroManual.value = 'Não foi possível salvar o CDI agora. Tente novamente.'
+  } finally {
+    salvandoManual.value = false
+  }
 }
 </script>
 
@@ -78,6 +115,36 @@ function selecionar(id: number) {
           Nenhuma conexão bancária encontrada.
         </p>
       </div>
+    </div>
+
+    <!-- CDI não encontrado automaticamente: deixa o usuário informar na mão. -->
+    <div
+      v-if="contaSelecionada && contaSelecionada.percentualCdi === null"
+      class="mt-2 rounded-xl border border-dashed border-gray-300 bg-white p-3"
+    >
+      <p class="text-xs text-gray-500">
+        Não conseguimos identificar automaticamente o rendimento dessa conta. Você sabe quanto ela rende?
+      </p>
+      <div class="mt-2 flex items-center gap-2">
+        <input
+          v-model.number="percentualManualInput"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="100"
+          class="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
+        />
+        <span class="text-sm text-gray-500">% do CDI</span>
+        <button
+          type="button"
+          :disabled="salvandoManual"
+          class="ml-auto rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-900 disabled:opacity-60"
+          @click="salvarCdiManual"
+        >
+          {{ salvandoManual ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+      <p v-if="erroManual" class="mt-1 text-xs text-red-500">{{ erroManual }}</p>
     </div>
   </div>
 </template>

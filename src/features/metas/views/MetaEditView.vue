@@ -23,6 +23,7 @@ import CardProjecaoEdicao from '../components/CardProjecaoEdicao.vue'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const idUsuarioAtual = authStore.usuario?.id
 
 const idMeta = Number(route.params.id)
 
@@ -101,6 +102,11 @@ onMounted(carregar)
 
 function adicionarValor(valor: number) {
   valorDesejado.value = Number(valorDesejado.value) + valor
+}
+
+function aoAtualizarCdi({ id, percentualCdi }: { id: number; percentualCdi: number }) {
+  const conta = contas.value.find((c) => c.id === id)
+  if (conta) conta.percentualCdi = percentualCdi
 }
 
 async function salvar() {
@@ -247,7 +253,13 @@ async function excluir() {
             </div>
           </div>
 
-          <SeletorContaRendimento v-model="idContaVinculada" :contas="contas" :editavel="false" />
+          <SeletorContaRendimento
+            v-model="idContaVinculada"
+            :contas="contas"
+            :id-usuario="idUsuarioAtual??0"
+            :editavel="false"
+            @cdi-atualizado="aoAtualizarCdi"
+          />
         </div>
       </div>
 
