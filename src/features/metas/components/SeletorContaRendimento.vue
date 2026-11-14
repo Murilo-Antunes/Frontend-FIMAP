@@ -67,33 +67,32 @@ async function salvarCdiManual() {
     </span>
 
     <div class="relative mt-2">
-      <button
-        type="button"
-        class="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3"
-        :class="editavel === false ? 'cursor-default' : 'cursor-pointer hover:border-gray-300'"
-        @click="editavel !== false && (aberto = !aberto)"
-      >
-        <span class="flex items-center gap-3 text-left">
-          <span
-            class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-700"
-          >
-            {{ (contaSelecionada?.banco ?? '??').slice(0, 2).toUpperCase() }}
-          </span>
-          <span>
-            <span class="block text-sm font-medium text-gray-900">
-              {{ contaSelecionada ? `${contaSelecionada.banco} · ${contaSelecionada.apelido}` : 'Selecione uma conta' }}
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 cursor-pointer hover:border-gray-300 transition-colors"
+          @click="aberto = !aberto"
+        >
+          <span class="flex items-center gap-3 text-left pointer-events-none">
+            <span
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-700"
+            >
+              {{ (contaSelecionada?.banco ?? '??').slice(0, 2).toUpperCase() }}
             </span>
-            <span class="block text-xs text-gray-400">
-              <template v-if="!contaSelecionada">Nenhuma conta selecionada</template>
-              <template v-else-if="contaSelecionada.percentualCdi === null">CDI não encontrado</template>
-              <template v-else>
-                RDB com Liquidez Imediata ({{ Math.round(contaSelecionada.percentualCdi * 100) }}% CDI)
-              </template>
+            <span>
+              <span class="block text-sm font-medium text-gray-900">
+                {{ contaSelecionada ? `${contaSelecionada.banco} · ${contaSelecionada.apelido}` : 'Selecione uma conta' }}
+              </span>
+              <span class="block text-xs text-gray-400">
+                <template v-if="!contaSelecionada">Nenhuma conta selecionada</template>
+                <template v-else-if="contaSelecionada.percentualCdi === null">Sem CDI vinculado</template>
+                <template v-else>
+                  RDB com Liquidez Imediata ({{ Math.round(contaSelecionada.percentualCdi * 100) }}% CDI)
+                </template>
+              </span>
             </span>
           </span>
-        </span>
-        <ChevronDown v-if="editavel !== false" class="h-4 w-4 text-gray-400" />
-      </button>
+          <ChevronDown class="h-4 w-4 text-gray-400 pointer-events-none" />
+        </button>
 
       <div
         v-if="aberto"
@@ -108,7 +107,7 @@ async function salvarCdiManual() {
         >
           <span>{{ conta.banco }} · {{ conta.apelido }}</span>
           <span class="text-xs text-gray-400">
-            {{ conta.percentualCdi === null ? 'CDI não encontrado' : `${Math.round(conta.percentualCdi * 100)}% CDI` }}
+            {{ conta.percentualCdi === null ? 'Sem CDI vinculado' : `${Math.round(conta.percentualCdi * 100)}% CDI` }}
           </span>
         </button>
         <p v-if="contas.length === 0" class="px-4 py-2 text-sm text-gray-400">

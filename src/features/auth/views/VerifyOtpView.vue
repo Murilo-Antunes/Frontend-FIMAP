@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import SubmitButton from '@/components/shared/SubmitButton.vue'
 import FormAlert from '@/components/shared/FormAlert.vue'
@@ -14,6 +14,7 @@ import OtpInput from '../components/OtpInput.vue'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const isVerified = ref(false)
 
 // id_usuario e email chegam via query string após o cadastro
 const idUsuario = Number(route.query.id)
@@ -24,6 +25,16 @@ const senha = String(route.query.senha ?? '')
 if (!idUsuario || !email || !senha) {
   router.replace({ name: 'register' })
 }
+
+onBeforeRouteLeave(async () => {
+  if (!isVerified.value) {
+    try {
+      await authService.deleteUsuario(idUsuario)
+    } catch (error) {
+      console.error('Falha ao deletar usuário:', error)
+    }
+  }
+})
 
 const codigo = ref('')
 const { errors, validate, clearError } = useZodForm(otpSchema)
@@ -38,6 +49,7 @@ async function onSubmit() {
   submitting.value = true
   try {
     await authService.verifyRegisterOtp(idUsuario, data.codigo)
+    isVerified.value = true
     // OTP válido: faz login automático e redireciona para conectar banco
     await auth.login({ email, senha })
     await router.replace({ name: 'connect-bank' })

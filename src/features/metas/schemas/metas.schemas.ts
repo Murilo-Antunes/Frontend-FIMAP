@@ -54,6 +54,19 @@ export const metaFormSchema = z
         message: 'A meta final deve ser maior que o valor já economizado',
       })
     }
+    if (data.dataAlvo) {
+      const [anoAlvo, mesAlvo] = data.dataAlvo.split('-').map(Number)
+      const dataAlvoDate = new Date(anoAlvo, mesAlvo - 1, 1)
+      const hoje = new Date()
+      const dataAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      if (dataAlvoDate < dataAtual) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dataAlvo'],
+          message: 'A data alvo não pode ser anterior ao mês atual',
+        })
+      }
+    }
   })
 
 export type MetaFormValues = z.infer<typeof metaFormSchema>
