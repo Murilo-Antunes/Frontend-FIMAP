@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
+import { computed } from 'vue'
 import { Bell, Menu, Settings, X } from 'lucide-vue-next'
 import BrandLogo from '@/components/shared/BrandLogo.vue'
-import { MAIN_NAV, SIDEBAR_ID, type NavItem } from '@/config/navigation'
+import { MAIN_NAV, SIDEBAR_NAV, SIDEBAR_ID, type NavItem } from '@/config/navigation'
 import { navAttrs } from './navAttrs'
 
 defineProps<{ sidebarOpen: boolean }>()
@@ -13,7 +14,16 @@ const emit = defineEmits<{
 
 const route = useRoute()
 
-const isActive = (item: NavItem) => Boolean(item.to && route.path.startsWith(item.to))
+const isSidebarRoute = computed(() => {
+  return SIDEBAR_NAV.some(item => item.to && route.path.startsWith(item.to))
+})
+
+const isActive = (item: NavItem) => {
+  if (item.key === 'home' && isSidebarRoute.value) {
+    return true
+  }
+  return Boolean(item.to && route.path.startsWith(item.to))
+}
 </script>
 
 <template>
