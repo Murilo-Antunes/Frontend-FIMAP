@@ -18,6 +18,7 @@ export const useCardsStore = defineStore('cards', () => {
   const cartaoEmTransicaoId = ref<string | null>(null)
 
   let controlador: AbortController | null = null
+  let itemIdsCarregados: string[] = []
 
   function getById(id: string | null | undefined): Cartao | null {
     if (!id) return null
@@ -26,8 +27,11 @@ export const useCardsStore = defineStore('cards', () => {
 
   /** `itemIds` = conexões bancárias. */
   async function carregar(itemIds: string[], opcoes: { forcar?: boolean } = {}): Promise<void> {
-    if (status.value === 'carregando' || status.value === 'sincronizando') return
-    if (status.value === 'pronto' && !opcoes.forcar) return
+    if (status.value === 'carregando' || status.value === 'sincronizando')return
+    const itemIdsAlterados =
+      itemIds.length !== itemIdsCarregados.length ||
+      itemIds.some((id, i) => id !== itemIdsCarregados[i])
+    if (status.value === 'pronto' && !opcoes.forcar && !itemIdsAlterados) return
 
     controlador?.abort()
     const ctrl = new AbortController()
@@ -44,6 +48,7 @@ export const useCardsStore = defineStore('cards', () => {
       })
       if (ctrl.signal.aborted) return
       cartoes.value = lista
+      itemIdsCarregados = [...itemIds]
       status.value = 'pronto'
     } catch (e) {
       if (ctrl.signal.aborted || axios.isCancel(e)) return
@@ -64,6 +69,7 @@ export const useCardsStore = defineStore('cards', () => {
     status.value = 'idle'
     erro.value = null
     cartaoEmTransicaoId.value = null
+    itemIdsCarregados = []
   }
 
   return { cartoes, status, erro, cartaoEmTransicaoId, getById, carregar, marcarTransicao, limpar }
