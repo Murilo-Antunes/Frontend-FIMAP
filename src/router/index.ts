@@ -126,6 +126,11 @@ export const router = createRouter({
           component: () => import('@/features/settings/views/ChangePasswordView.vue'),
           meta: { requiresAuth: true, requiresConnection: true },
         },
+        {
+          path: '/notificacoes',
+          name: 'notificacoes',
+          component: () => import('@/features/notificacoes/views/NotificacoesView.vue'),
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },

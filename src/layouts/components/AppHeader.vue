@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { Bell, Menu, Settings, X } from 'lucide-vue-next'
 import BrandLogo from '@/components/shared/BrandLogo.vue'
 import { MAIN_NAV, SIDEBAR_NAV, SIDEBAR_ID, type NavItem } from '@/config/navigation'
 import { navAttrs } from './navAttrs'
+import { useAuthStore } from '@/stores/auth.store'
+import { useNotificacoesStore } from '@/stores/notificacoes.store'
 
 defineProps<{ sidebarOpen: boolean }>()
 
@@ -13,6 +15,8 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const authStore = useAuthStore()
+const notificacoesStore = useNotificacoesStore()
 
 const isSidebarRoute = computed(() => {
   return SIDEBAR_NAV.some(item => item.to && route.path.startsWith(item.to))
@@ -24,6 +28,16 @@ const isActive = (item: NavItem) => {
   }
   return Boolean(item.to && route.path.startsWith(item.to))
 }
+
+const badgeNaoLidas = computed(() =>
+  notificacoesStore.naoLidas > 9 ? '9+' : String(notificacoesStore.naoLidas),
+)
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    notificacoesStore.atualizarContagem(authStore.usuario?.id??0)
+  }
+})
 </script>
 
 <template>
@@ -78,13 +92,19 @@ const isActive = (item: NavItem) => {
       </nav>
 
       <div class="flex items-center gap-1">
-        <button
-          type="button"
-          class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
+        <RouterLink
+          :to="{ name: 'notificacoes' }"
+          class="relative rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
           aria-label="Notificações"
         >
           <Bell :size="20" />
-        </button>
+          <span
+            v-if="notificacoesStore.naoLidas > 0"
+            class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
+          >
+            {{ badgeNaoLidas }}
+          </span>
+        </RouterLink>
         <button
           type="button"
           class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
