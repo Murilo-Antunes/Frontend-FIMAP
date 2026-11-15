@@ -4,6 +4,7 @@ import { connectionGuard } from './guards/connection.guard'
 import { cardsRoutes } from './routes/cards.routes'
 import { setupCardsTransition } from './guards/cards-transition'
 import { metasRoutes } from './routes/metas.routes'
+import {simulatorRoutes} from "./routes/simulator.routes"
 
 
 declare module 'vue-router' {
@@ -83,6 +84,7 @@ export const router = createRouter({
         },
         ...cardsRoutes,
         ...metasRoutes,
+        ...simulatorRoutes,
         {
           path: 'cartoes/:cartaoId/extrato', // ajuste ao padrão da sua rota card-detail
           name: 'card-statement',
