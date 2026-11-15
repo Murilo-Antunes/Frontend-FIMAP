@@ -85,7 +85,24 @@ export const isCanceled = (error: unknown): boolean => axios.isCancel(error)
 export const isNotFound = (error: unknown): boolean =>
   axios.isAxiosError(error) && error.response?.status === 404
 
-/** Ponto único de leitura de mensagem de erro (formato { codigo, mensagem, campos } via toApiError). */
+/**
+ * Ponto único de leitura de mensagem de erro.
+ * Os controllers de simulação respondem `{ sucesso, mensagem }` (sem `codigo`), formato que o
+ * toApiError trata como erro genérico — por isso a `mensagem` do corpo é lida aqui primeiro.
+ */
 export function getErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    // Sem `response`: API fora do ar, URL errada (VITE_API_URL), CORS ou timeout.
+    if (!error.response) {
+      console.error('[simulador] sem resposta da API:', error.code, error.config?.url)
+      return 'Não foi possível conectar ao servidor. Verifique se a API está no ar.'
+    }
+    const { status, data } = error.response
+    console.error('[simulador] erro HTTP', status, error.config?.method, error.config?.url, data)
+    const mensagem = (data as { mensagem?: unknown } | undefined)?.mensagem
+    return typeof mensagem === 'string' && mensagem ? mensagem : `${fallback} (HTTP ${status})`
+  }
+  // Erro de código (ex.: usuário não carregado no store) — não é da API.
+  console.error('[simulador] erro inesperado:', error)
   return toApiError(error).mensagem || fallback
 }

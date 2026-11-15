@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, useId, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useMetaDraftStore } from '@/stores/meta-draft.store'
 import { Car, Check, Info, Minus, Plus, Rocket, SlidersHorizontal, Percent } from 'lucide-vue-next'
 import SimCard from './SimCard.vue'
 import SimulationInfoCard from './SimulationInfoCard.vue'
@@ -13,6 +15,7 @@ import { useSimulationSave } from '../composables/useSimulationSave'
 import { calculateAmortization } from '../lib/amortization'
 import { formatBRLCompactLong, formatPrazoMesesAnos, roundMoney } from '../lib/format'
 import { asAmortizationMode, asCalcSystem } from '../lib/guards'
+import { amortizationToMetaDraft, META_CREATE_ROUTE } from '../lib/meta-draft'
 import {
   LIMITS,
   validateAmortization,
@@ -129,6 +132,21 @@ function bumpExtra(direction: 1 | -1): void {
     Math.max(roundMoney(form.aporte_mensal + direction * 100), 0),
     LIMITS.moneyMax,
   )
+}
+
+const router = useRouter()
+const metaDraft = useMetaDraftStore()
+
+/** Leva os dados da simulação (mesmo sem salvar) para a tela de criação de meta, já preenchida. */
+function createGoal(): void {
+  const validation = validateAmortization(form)
+  if (!validation.ok || !result.value) {
+    errors.value = validation.ok ? {} : validation.errors
+    return
+  }
+  errors.value = {}
+  metaDraft.set(amortizationToMetaDraft(form, result.value))
+  void router.push({ name: META_CREATE_ROUTE })
 }
 
 async function submit(): Promise<void> {
@@ -349,11 +367,13 @@ const modeGroup = useId()
       <div class="mt-auto">
         <SimulationActions
           primary-label="Criar Plano de Amortização"
+          :primary-disabled="result === null"
           :editing="editing"
           :saving="saving"
           :can-save="canSave"
           :feedback="feedback"
           @save="submit"
+          @primary="createGoal"
         />
       </div>
     </div>

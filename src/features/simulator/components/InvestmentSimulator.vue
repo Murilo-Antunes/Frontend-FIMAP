@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useMetaDraftStore } from '@/stores/meta-draft.store'
 import SimCard from './SimCard.vue'
 import SimulationInfoCard from './SimulationInfoCard.vue'
 import SimulationActions from './SimulationActions.vue'
@@ -14,6 +16,7 @@ import { useSimulationSave } from '../composables/useSimulationSave'
 import { calculateInvestment } from '../lib/investment'
 import { formatBRLInt, formatPrazoAnosMeses } from '../lib/format'
 import { buildRateOptions } from '../lib/rate-options'
+import { investmentToMetaDraft, META_CREATE_ROUTE } from '../lib/meta-draft'
 import {
   validateInvestment,
   type FieldErrors,
@@ -100,6 +103,21 @@ const canSave = computed(() => !editing.value || dirty.value)
 watch(form, () => {
   if (feedback.value?.tone === 'success') clearFeedback()
 })
+
+const router = useRouter()
+const metaDraft = useMetaDraftStore()
+
+/** Leva os dados da simulação (mesmo sem salvar) para a tela de criação de meta, já preenchida. */
+function createGoal(): void {
+  const validation = validateInvestment(form)
+  if (!validation.ok || !result.value) {
+    errors.value = validation.ok ? {} : validation.errors
+    return
+  }
+  errors.value = {}
+  metaDraft.set(investmentToMetaDraft(form, result.value))
+  void router.push({ name: META_CREATE_ROUTE })
+}
 
 async function submit(): Promise<void> {
   const validation = validateInvestment(form)
@@ -192,11 +210,13 @@ async function submit(): Promise<void> {
 
       <SimulationActions
         primary-label="Criar Meta a partir desta Simulação"
+        :primary-disabled="result === null"
         :editing="editing"
         :saving="saving"
         :can-save="canSave"
         :feedback="feedback"
         @save="submit"
+        @primary="createGoal"
       />
     </div>
 

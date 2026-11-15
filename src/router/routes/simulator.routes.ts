@@ -1,5 +1,15 @@
 import type { RouteRecordRaw } from 'vue-router'
 
+/**
+ * Rotas do simulador. Devem entrar como `children` do MainLayout (que já define
+ * requiresAuth + requiresConnection para toda a área autenticada):
+ *
+ *   children: [ ...dashboardRoutes, ...simulatorRoutes ]
+ *
+ * - simulations-history: lista (GET investimentos | amortizacoes conforme ?tipo=)
+ * - simulator-new:       simulador em branco  → botão "Salvar Simulação"  → POST
+ * - simulator-edit:      simulação existente  → botão "Salvar Alteração"  → PATCH
+ */
 export const simulatorRoutes: RouteRecordRaw[] = [
   {
     path: '/simulacoes',

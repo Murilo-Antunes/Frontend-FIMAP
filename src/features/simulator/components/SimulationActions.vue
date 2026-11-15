@@ -3,8 +3,10 @@ import { ArrowRight, Bookmark, LoaderCircle } from 'lucide-vue-next'
 import type { SaveFeedback } from '../composables/useSimulationSave'
 
 defineProps<{
-  /** Texto do botão principal (ação de meta/plano — ainda não implementada) */
+  /** Texto do botão principal (criar meta a partir da simulação) */
   primaryLabel: string
+  /** Desabilita o botão principal quando ainda não há resultado válido para virar meta */
+  primaryDisabled?: boolean
   /** true = simulação já existente → "Salvar Alteração" (PATCH); false → "Salvar Simulação" (POST) */
   editing: boolean
   saving: boolean
@@ -13,17 +15,16 @@ defineProps<{
   feedback: SaveFeedback | null
 }>()
 
-defineEmits<{ save: [] }>()
+defineEmits<{ save: []; primary: [] }>()
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
-    <!-- TODO: "Criar Meta" / "Criar Plano" — funcionalidade adiada; botão só sinaliza o ponto de entrada. -->
     <button
       type="button"
-      disabled
-      title="Disponível em breve"
-      class="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 py-4 text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+      :disabled="primaryDisabled"
+      class="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 py-4 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+      @click="$emit('primary')"
     >
       {{ primaryLabel }}
       <ArrowRight class="size-4" aria-hidden="true" />

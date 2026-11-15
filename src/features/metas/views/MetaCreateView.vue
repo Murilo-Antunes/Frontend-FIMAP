@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useMetaDraftStore, type MetaDraft } from '@/stores/meta-draft.store'
 import { metasService } from '../services/metas.service'
 import { categoriasService } from '../services/categorias.service'
 import { contasRendimentoService } from '../services/contas-rendimento.service'
@@ -15,6 +16,7 @@ import CardProjecaoCriacao from '../components/CardProjecaoCriacao.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const metaDraft = useMetaDraftStore()
 const idUsuarioAtual = authStore.usuario?.id
 
 const categorias = ref<CategoriaMeta[]>([])
@@ -34,6 +36,25 @@ const idContaVinculada = ref<number | null>(null)
 const erros = ref<Record<string, string>>({})
 const enviando = ref(false)
 const erroGeral = ref<string | null>(null)
+
+// Rascunho vindo do simulador financeiro (só em memória; consume() descarta após a leitura).
+const origemSimulacao = ref<MetaDraft['origem'] | null>(null)
+
+function aplicarRascunho(rascunho: MetaDraft) {
+  nomeObjetivo.value = rascunho.nome
+  descricao.value = rascunho.descricao ?? ''
+  valorInicio.value = rascunho.valorInicio
+  valorDesejado.value = rascunho.valorDesejado
+  aporteMensal.value = rascunho.aporteMensal
+  // input type="month" trabalha em hora local: "YYYY-MM"
+  const data = new Date(rascunho.dataAlvo)
+  dataAlvo.value = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+  origemSimulacao.value = rascunho.origem
+}
+
+// Lido de forma síncrona na criação do componente, antes de qualquer await.
+const rascunho = metaDraft.consume()
+if (rascunho) aplicarRascunho(rascunho)
 
 const projecao = computed(() =>
   calcularProjecaoIA({
@@ -128,6 +149,16 @@ async function confirmar() {
   <div class="mx-auto max-w-5xl px-6 py-8">
     <h1 class="text-2xl font-semibold text-gray-900">Criar Nova Meta</h1>
     <p class="text-sm text-gray-400">Defina seus objetivos e deixe a IA calcular o melhor plano de rentabilidade e prazos.</p>
+
+    <p
+      v-if="origemSimulacao"
+      role="status"
+      class="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs text-gray-600"
+    >
+      Preenchida a partir da sua simulação de
+      {{ origemSimulacao === 'investimento' ? 'investimento' : 'amortização' }}. Escolha a categoria e
+      revise os valores antes de confirmar.
+    </p>
 
     <div class="mt-6">
       <SeletorCategoria v-model="categoriaId" :categorias="categorias" />
