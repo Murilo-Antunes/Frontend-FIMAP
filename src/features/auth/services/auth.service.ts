@@ -66,7 +66,7 @@ export const authService = {
   // ---------------------------------------------------------------------------
 
   async getUserIdByEmail(email: string): Promise<number> {
-    const url = `${BASE}/email/${email}`
+    const url = `${BASE}/usuario/email/${email}`
     
     console.log('GET URL:', url)
     const { data } = await http.get<{ id_usuario: number, usuario?: { id: number } }>(url)
