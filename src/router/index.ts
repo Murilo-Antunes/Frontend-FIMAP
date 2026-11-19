@@ -5,6 +5,9 @@ import { cardsRoutes } from './routes/cards.routes'
 import { setupCardsTransition } from './guards/cards-transition'
 import { metasRoutes } from './routes/metas.routes'
 import {simulatorRoutes} from "./routes/simulator.routes"
+import {communityRoutes} from "./routes/community.routes";
+import { socialProfileGuard } from './guards/social-profile.guard'
+
 
 
 declare module 'vue-router' {
@@ -85,6 +88,7 @@ export const router = createRouter({
         ...cardsRoutes,
         ...metasRoutes,
         ...simulatorRoutes,
+        ...communityRoutes,
         {
           path: 'cartoes/:cartaoId/extrato', // ajuste ao padrão da sua rota card-detail
           name: 'card-statement',
@@ -139,4 +143,5 @@ export const router = createRouter({
 
 router.beforeEach(authGuard)
 router.beforeEach(connectionGuard)
+router.beforeEach(socialProfileGuard)
 setupCardsTransition(router)

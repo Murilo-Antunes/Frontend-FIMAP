@@ -35,7 +35,7 @@ export const MAIN_NAV: NavItem[] = [
   { key: 'chat', label: 'Chat IA', icon: Bot },
   { key: 'simulator', label: 'Simular', icon: Calculator, to: '/simulacoes' },
   { key: 'goals', label: 'Metas', icon: Flag, to: '/metas' },
-  { key: 'community', label: 'Social', icon: Users },
+  { key: 'community', label: 'Social', icon: Users, to: '/comunidade' },
 ]
 
 /** Itens do menu lateral ("Navegação principal"). */
