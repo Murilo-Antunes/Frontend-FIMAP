@@ -1,16 +1,21 @@
 /**
- * Caminhos da API da comunidade, num só lugar.
- * Ajuste aqui caso o prefixo montado no app.js seja diferente.
+ * Caminhos da API da comunidade, num só lugar (espelham o app.js):
+ *   /v1/comunidade/posts              -> postRoutes
+ *   /v1/comunidade/posts/comentario   -> comentarRoutes
+ *   /v1/comunidade/curtida            -> curtirRoutes
  */
-const COMUNIDADE = '/v1/comunidade'
+const POSTS = '/v1/comunidade/posts'
+const COMENTARIOS = `${POSTS}/comentario`
+const CURTIDAS = '/v1/comunidade/curtida'
 
 export const communityEndpoints = {
-  feed: `${COMUNIDADE}/posts/feed`,
-  postById: (idPost: number) => `${COMUNIDADE}/posts/buscar/${idPost}`,
+  /** PROPOSTO: ainda não existe em postRoutes (ver guia, seção 3.1). */
+  feed: `${POSTS}/feed`,
+  postById: (idPost: number) => `${POSTS}/buscar/${idPost}`,
 
-  togglePostLike: `${COMUNIDADE}/curtidas-post/alternar-curtida-post`,
-  toggleCommentLike: `${COMUNIDADE}/curtidas-comentario/alternar-curtida-comentario`,
+  togglePostLike: `${CURTIDAS}/alternar-curtida-post`,
+  toggleCommentLike: `${CURTIDAS}/alternar-curtida-comentario`,
 
-  createComment: `${COMUNIDADE}/comentarios/comentar`,
-  commentsByPost: (idPost: number) => `${COMUNIDADE}/comentarios/buscar-comentarios/post/${idPost}`,
+  createComment: `${COMENTARIOS}/comentar`,
+  commentsByPost: (idPost: number) => `${COMENTARIOS}/buscar-comentarios/post/${idPost}`,
 } as const
