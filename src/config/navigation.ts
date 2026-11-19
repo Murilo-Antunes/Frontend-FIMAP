@@ -32,7 +32,7 @@ export interface NavItem {
 /** Abas do header (e atalhos do menu lateral em telas pequenas). */
 export const MAIN_NAV: NavItem[] = [
   { key: 'home', label: 'Início', icon: Home, to: '/dashboard' },
-  { key: 'chat', label: 'Chat IA', icon: Bot },
+  { key: 'chat', label: 'Chat IA', icon: Bot, to: '/chat-ia' },
   { key: 'simulator', label: 'Simular', icon: Calculator, to: '/simulacoes' },
   { key: 'goals', label: 'Metas', icon: Flag, to: '/metas' },
   { key: 'community', label: 'Social', icon: Users },

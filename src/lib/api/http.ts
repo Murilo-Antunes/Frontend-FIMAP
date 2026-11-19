@@ -26,7 +26,7 @@ http.interceptors.response.use(
       error.config?.headers.has('Authorization')
     ) {
       // imports dinâmicos evitam dependência circular (router/stores → http)
-      const [{ useAuthStore }, { default: router }] = await Promise.all([
+      const [{ useAuthStore }, { router }] = await Promise.all([
         import('@/stores/auth.store'),
         import('@/router'),
       ])

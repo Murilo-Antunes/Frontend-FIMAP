@@ -2,27 +2,25 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authService } from '@/features/auth/services/auth.service'
 import type { LoginPayload, Usuario } from '@/features/auth/types/auth.types'
+import { useSessionTokenStore } from './session-token.store'
 
 type SessionStatus = 'desconhecido' | 'autenticado' | 'anonimo'
 
 /**
  * Estado de sessão do usuário.
  *
- * A nova API não usa cookies nem token persistido: o usuário fica apenas em memória.
- * Recarregar a página desloga (status volta para 'desconhecido' → guard chama
- * restoreSession() → session() retorna null → anonimo → redirect para login).
- *
- * Quando a autenticação server-side (cookie/JWT) for implementada no backend,
- * basta: (1) enviar withCredentials no http, (2) implementar authService.session()
- * consultando o endpoint real, (3) opcionalmente adicionar interceptor de refresh.
+ * O usuário e o token de acesso ficam em memória.
+ * Recarregar a página exige um novo login.
  */
 export const useAuthStore = defineStore('auth', () => {
   const usuario = ref<Usuario | null>(null)
   const status = ref<SessionStatus>('desconhecido')
+  const sessionToken = useSessionTokenStore()
 
   const isAuthenticated = computed(() => status.value === 'autenticado')
 
   function clearSession() {
+    sessionToken.clear()
     usuario.value = null
     status.value = 'anonimo'
   }
@@ -47,7 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(payload: LoginPayload) {
-    const logged = await authService.login(payload)
+    const { usuario: logged, access_token } = await authService.login(payload)
+    sessionToken.setToken(access_token)
     usuario.value = logged
     status.value = 'autenticado'
   }

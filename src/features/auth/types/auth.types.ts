@@ -50,6 +50,7 @@ export interface LoginResponse {
   sucesso: boolean
   mensagem: string
   usuario: Usuario
+  access_token: string
 }
 
 /** Resposta genérica de sucesso/mensagem */

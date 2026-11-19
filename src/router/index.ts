@@ -62,6 +62,12 @@ export const router = createRouter({
       component: () => import('@/layouts/MainLayout.vue'),
       meta: { requiresAuth: true, requiresConnection: true },
       children: [
+        {
+          path: 'chat-ia',
+          name: 'chat-ia',
+          component: () => import('@/features/chat/views/ChatView.vue'),
+          meta: { requiresConnection: false },
+        },
         { path: '', redirect: { name: 'dashboard' } },
         {
           path: 'dashboard',
@@ -136,6 +142,20 @@ export const router = createRouter({
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
   ],
 })
+
+// Prévia visual local da IA, sem alterar a proteção das rotas existentes.
+if (import.meta.env.DEV) {
+  router.addRoute({
+    path: '/preview/chat-ia',
+    component: () => import('@/layouts/MainLayout.vue'),
+    meta: { requiresAuth: false, requiresConnection: false },
+    children: [{
+      path: '',
+      name: 'chat-ia-preview',
+      component: () => import('@/features/chat/views/ChatView.vue'),
+    }],
+  })
+}
 
 router.beforeEach(authGuard)
 router.beforeEach(connectionGuard)
