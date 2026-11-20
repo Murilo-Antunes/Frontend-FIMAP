@@ -141,6 +141,28 @@ export const router = createRouter({
           name: 'notificacoes',
           component: () => import('@/features/notificacoes/views/NotificacoesView.vue'),
         },
+        {
+          path: 'comunidade/perfil',
+          name: 'community-profile',
+          component: () => import('@/features/community/views/CommunityProfileView.vue'),
+        },
+        {
+          path: 'comunidade/perfil/badges',
+          name: 'community-profile-badges',
+          component: () => import('@/features/community/views/BadgesCollectionView.vue'),
+        },
+        {
+          path: 'comunidade/u/:username',
+          name: 'community-public-profile',
+          component: () => import('@/features/community/views/PublicProfileView.vue'),
+          props: true,
+        },
+        {
+          path: 'comunidade/u/:username/badges',
+          name: 'community-user-badges',
+          component: () => import('@/features/community/views/UserBadgesView.vue'),
+          props: true,
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },

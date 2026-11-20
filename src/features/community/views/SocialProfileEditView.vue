@@ -23,7 +23,6 @@ import {
 import type { Badge, PerfilSocialPayload, UsernameStatus } from '../types/community.types'
 import BadgeIcon from '../components/BadgeIcon.vue'
 import BadgePickerDialog from '../components/BadgePickerDialog.vue'
-import UserAvatar from '../components/UserAvatar.vue'
 
 const MAX_FEATURED_BADGES = 3
 
@@ -52,7 +51,7 @@ const formError = ref('')
 const successMessage = ref('')
 const submitting = ref(false)
 
-const idUsuario = computed(() => Number(auth.usuario?.id??0))
+const idUsuario = computed(() => Number(auth.usuario?.id))
 const isCreate = computed(() => mode.value === 'create')
 const pageTitle = computed(() => (isCreate.value ? 'Criar Perfil Social' : 'Editar Perfil Social'))
 const topButtonLabel = computed(() => (isCreate.value ? 'Confirmar' : 'Salvar'))
@@ -422,16 +421,33 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
       <div class="grid gap-6 lg:grid-cols-[5fr_8fr]">
         <!-- Foto -->
         <div class="flex flex-col items-center justify-center gap-3 rounded-2xl bg-card p-8 shadow-sm ring-1 ring-border/50">
-          <div class="relative">
-            <UserAvatar :src="currentPhoto" :name="form.nome_exibicao" size="xl" class="!size-24 sm:!size-28" />
-            <button
-              type="button"
-              class="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground ring-4 ring-card transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-ring"
-              aria-label="Alterar foto de perfil"
-              @click="photoInput?.click()"
+          <button
+            type="button"
+            aria-label="Alterar foto de perfil"
+            class="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:size-28"
+            @click="photoInput?.click()"
+          >
+            <!-- Sem foto: ícone de câmera centralizado. Com foto: ela ocupa o círculo inteiro,
+                 recortada e redimensionada (object-cover) para o mesmo tamanho padrão. -->
+            <img
+              v-if="currentPhoto"
+              :src="currentPhoto"
+              alt="Foto de perfil"
+              class="size-full object-cover"
+              loading="lazy"
+              decoding="async"
+              referrerpolicy="no-referrer"
+            />
+            <Camera v-else class="size-8 text-muted-foreground transition group-hover:text-foreground" aria-hidden="true" />
+
+            <!-- Ao passar o mouse sobre a foto já definida, reforça que dá para trocar -->
+            <span
+              v-if="currentPhoto"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100"
             >
-              <Camera class="size-4" aria-hidden="true" />
-            </button>
+              <Camera class="size-6 text-white" aria-hidden="true" />
+            </span>
+
             <input
               ref="photoInput"
               type="file"
@@ -441,7 +457,7 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
               aria-hidden="true"
               @change="onPhotoSelected"
             />
-          </div>
+          </button>
 
           <button
             v-if="currentPhoto"

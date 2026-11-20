@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
 import { computed, onMounted } from 'vue'
-import { Bell, Menu, Settings, X } from 'lucide-vue-next'
+import { Bell, Menu, Settings, UserRound, X } from 'lucide-vue-next'
 import BrandLogo from '@/components/shared/BrandLogo.vue'
 import { MAIN_NAV, SIDEBAR_NAV, SIDEBAR_ID, type NavItem } from '@/config/navigation'
 import { navAttrs } from './navAttrs'
@@ -32,6 +32,11 @@ const isActive = (item: NavItem) => {
 const badgeNaoLidas = computed(() =>
   notificacoesStore.naoLidas > 9 ? '9+' : String(notificacoesStore.naoLidas),
 )
+
+// NOVO: ícone de perfil só aparece dentro da área "Social".
+// ⚠️ Ajuste o prefixo abaixo se o path real das communityRoutes não for
+// "/comunidade" (confira em src/router/routes/community.routes.ts).
+const isSocialSection = computed(() => route.path.startsWith('/comunidade'))
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
@@ -92,6 +97,16 @@ onMounted(() => {
       </nav>
 
       <div class="flex items-center gap-1">
+        <!-- NOVO: só aparece dentro da área Social; leva ao próprio perfil (Perfil Comunidade). -->
+        <RouterLink
+          v-if="isSocialSection"
+          :to="{ name: 'community-profile' }"
+          class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
+          aria-label="Meu perfil na comunidade"
+        >
+          <UserRound :size="20" />
+        </RouterLink>
+
         <RouterLink
           :to="{ name: 'notificacoes' }"
           class="relative rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
@@ -105,13 +120,6 @@ onMounted(() => {
             {{ badgeNaoLidas }}
           </span>
         </RouterLink>
-        <button
-          type="button"
-          class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
-          aria-label="Configurações"
-        >
-          <Settings :size="20" />
-        </button>
       </div>
     </div>
   </header>

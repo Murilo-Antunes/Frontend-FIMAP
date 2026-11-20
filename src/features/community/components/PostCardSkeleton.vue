@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex h-full min-h-56 animate-pulse flex-col gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/50"
+    class="flex h-full min-h-56 animate-pulse flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-border/50"
     aria-hidden="true"
   >
     <div class="flex items-center gap-3">

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { isCancel } from 'axios'
 import { refDebounced } from '@vueuse/core'
 import { Loader2, Newspaper, RefreshCw, Search, AlertCircle } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import { postService } from '../services/post.service'
 import type { FeedOrdem, Post } from '../types/community.types'
@@ -10,6 +11,8 @@ import PostCard from '../components/PostCard.vue'
 import PostCardSkeleton from '../components/PostCardSkeleton.vue'
 
 const PAGE_SIZE = 12
+
+const auth = useAuthStore()
 
 const posts = ref<Post[]>([])
 const total = ref(0)
@@ -52,6 +55,7 @@ async function load(reset: boolean): Promise<void> {
   try {
     const result = await postService.listFeed(
       { pagina: nextPage, limite: PAGE_SIZE, ordem: ordem.value, busca: debouncedSearch.value },
+      auth.usuario?.id??0,
       controller.signal,
     )
 
@@ -92,7 +96,7 @@ onBeforeUnmount(() => controller?.abort())
         autocomplete="off"
         maxlength="100"
         placeholder="Buscar tópicos, dúvidas ou ativos..."
-        class="h-12 w-full rounded-full bg-muted/70 pl-12 pr-5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:bg-muted focus:ring-2 focus:ring-ring/40"
+        class="h-12 w-full rounded-full bg-white pl-12 pr-5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:bg-white focus:ring-2 focus:ring-ring/40"
       />
     </form>
 
@@ -118,7 +122,7 @@ onBeforeUnmount(() => controller?.abort())
     </div>
 
     <!-- Erro -->
-    <div v-else-if="status === 'error'" role="alert" class="rounded-2xl bg-card p-8 text-center shadow-sm ring-1 ring-border/50">
+    <div v-else-if="status === 'error'" role="alert" class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-border/50">
       <AlertCircle class="mx-auto size-6 text-destructive" aria-hidden="true" />
       <p class="mt-2 text-sm font-medium text-foreground">Não foi possível carregar o feed.</p>
       <p class="mt-1 text-sm text-muted-foreground">{{ errorMessage }}</p>
@@ -133,7 +137,7 @@ onBeforeUnmount(() => controller?.abort())
     </div>
 
     <!-- Vazio -->
-    <div v-else-if="posts.length === 0" class="rounded-2xl bg-card p-10 text-center shadow-sm ring-1 ring-border/50">
+    <div v-else-if="posts.length === 0" class="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-border/50">
       <Newspaper class="mx-auto size-6 text-muted-foreground" aria-hidden="true" />
       <p class="mt-2 text-sm font-medium text-foreground">
         {{ isSearching ? 'Nenhuma publicação encontrada.' : 'Ainda não há publicações na comunidade.' }}
