@@ -12,7 +12,7 @@ import type { Badge, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
 
 const BASE_USUARIO = '/v1/openfinance/usuario'
-const BASE_BADGES = '/v1/comunidade/badges'
+const BASE_BADGES = '/v1/comunidade/badge'
 const BASE_POSTS = '/v1/comunidade/posts'
 const BASE_COMENTARIOS = '/v1/comunidade/comentarios'
 const BASE_SEGUIR = '/v1/comunidade/seguir'
@@ -25,9 +25,7 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
 }
 
 export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
-  // ⚠️ A rota existente é /usuario/:username — confirme se "username" aqui
-  // aceita o username_social (perfil público) ou só o username de login.
-  const { data } = await http.get(`${BASE_USUARIO}/usuario/${usernameSocial}`)
+  const { data } = await http.get(`${BASE_USUARIO}/social/username-disponivel/${usernameSocial}`)
   return data.usuario ?? data
 }
 
