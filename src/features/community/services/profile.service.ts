@@ -22,7 +22,7 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
 }
 
 export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
-  const { data } = await http.get(`${BASE_USUARIO}/social/username-disponivel/${usernameSocial}`)
+  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`)
   return data.usuario ?? data
 }
 
