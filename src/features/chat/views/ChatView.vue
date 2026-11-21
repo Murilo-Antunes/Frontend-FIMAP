@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ArrowUp, Bot, ChevronRight, MessageSquare, PanelLeftOpen, Plus, Search, X } from 'lucide-vue-next'
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
+import ChatAssistantMessage from '../components/ChatAssistantMessage.vue'
 import { useChat } from '../composables/useChat'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
@@ -78,7 +79,8 @@ function onKeydown(event: KeyboardEvent) {
           </div>
           <div v-for="(message, index) in messages" :key="message.id ?? index" class="mb-6 flex items-start gap-3" :class="message.papel === 0 ? 'flex-row-reverse' : ''">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-[10px] text-white">{{ message.papel === 0 ? initials : 'AI' }}</span>
-            <div class="max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6" :class="message.papel === 0 ? 'bg-black text-white' : 'border border-neutral-200 bg-white shadow-sm'">{{ message.conteudo || 'Preparando resposta...' }}</div>
+            <div v-if="message.papel === 0" class="min-w-0 max-w-[88%] rounded-2xl bg-black px-4 py-3 text-sm leading-6 wrap-anywhere whitespace-pre-wrap text-white">{{ message.conteudo }}</div>
+            <ChatAssistantMessage v-else class="max-w-3xl flex-1 pt-0.5" :content="message.conteudo" :streaming="sending && index === messages.length - 1" />
           </div>
         </div>
         <div class="px-4 pb-4 sm:px-8 sm:pb-5">
