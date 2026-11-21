@@ -9,6 +9,7 @@ import { postService } from '../services/post.service'
 import type { FeedOrdem, Post } from '../types/community.types'
 import PostCard from '../components/PostCard.vue'
 import PostCardSkeleton from '../components/PostCardSkeleton.vue'
+import { ui } from '../ui'
 
 const PAGE_SIZE = 12
 
@@ -84,91 +85,83 @@ onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <section class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
-    <!-- Busca -->
-    <form role="search" class="relative" @submit.prevent>
-      <label for="community-search" class="sr-only">Buscar publicações</label>
-      <Search class="pointer-events-none absolute left-5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-      <input
-        id="community-search"
-        v-model="search"
-        type="search"
-        autocomplete="off"
-        maxlength="100"
-        placeholder="Buscar tópicos, dúvidas ou ativos..."
-        class="h-12 w-full rounded-full bg-white pl-12 pr-5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:bg-white focus:ring-2 focus:ring-ring/40"
-      />
-    </form>
+  <div :class="ui.page">
+    <section class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+      <!-- Busca -->
+      <form role="search" class="relative" @submit.prevent>
+        <label for="community-search" class="sr-only">Buscar publicações</label>
+        <Search class="pointer-events-none absolute left-5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
+        <input
+          id="community-search"
+          v-model="search"
+          type="search"
+          autocomplete="off"
+          maxlength="100"
+          placeholder="Buscar tópicos, dúvidas ou ativos..."
+          :class="[ui.fieldGray, 'h-11 w-full pl-12 pr-5']"
+        />
+      </form>
 
-    <!-- Cabeçalho do feed -->
-    <div class="mb-3 mt-8 flex items-center justify-between">
-      <h1 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Feed da comunidade</h1>
-      <div class="flex items-center gap-2">
-        <label for="community-order" class="sr-only">Ordenar publicações</label>
-        <select
-          id="community-order"
-          v-model="ordem"
-          class="cursor-pointer rounded-md bg-transparent py-1 pl-1 pr-1 text-xs text-muted-foreground outline-none transition hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="recentes">Recentes</option>
-          <option value="antigos">Mais antigos</option>
-        </select>
+      <!-- Cabeçalho do feed -->
+      <div class="mb-3 mt-8 flex items-center justify-between">
+        <h1 :class="ui.eyebrow">Feed da comunidade</h1>
+        <div class="flex items-center gap-2">
+          <label for="community-order" class="sr-only">Ordenar publicações</label>
+          <select
+            id="community-order"
+            v-model="ordem"
+            class="cursor-pointer rounded-md bg-transparent py-1 text-xs text-neutral-500 outline-none transition hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-black/30"
+          >
+            <option value="recentes">Recentes</option>
+            <option value="antigos">Mais antigos</option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <!-- Carregando -->
-    <div v-if="status === 'loading'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Carregando publicações">
-      <PostCardSkeleton v-for="n in 6" :key="n" />
-    </div>
+      <!-- Carregando -->
+      <div v-if="status === 'loading'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Carregando publicações">
+        <PostCardSkeleton v-for="n in 6" :key="n" />
+      </div>
 
-    <!-- Erro -->
-    <div v-else-if="status === 'error'" role="alert" class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-border/50">
-      <AlertCircle class="mx-auto size-6 text-destructive" aria-hidden="true" />
-      <p class="mt-2 text-sm font-medium text-foreground">Não foi possível carregar o feed.</p>
-      <p class="mt-1 text-sm text-muted-foreground">{{ errorMessage }}</p>
-      <button
-        type="button"
-        class="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        @click="load(true)"
-      >
-        <RefreshCw class="size-4" aria-hidden="true" />
-        Tentar novamente
-      </button>
-    </div>
-
-    <!-- Vazio -->
-    <div v-else-if="posts.length === 0" class="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-border/50">
-      <Newspaper class="mx-auto size-6 text-muted-foreground" aria-hidden="true" />
-      <p class="mt-2 text-sm font-medium text-foreground">
-        {{ isSearching ? 'Nenhuma publicação encontrada.' : 'Ainda não há publicações na comunidade.' }}
-      </p>
-      <p class="mt-1 text-sm text-muted-foreground">
-        {{ isSearching ? 'Tente buscar por outro termo.' : 'Quando alguém publicar, o post aparece aqui.' }}
-      </p>
-    </div>
-
-    <!-- Feed -->
-    <template v-else>
-      <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <li v-for="post in posts" :key="post.id">
-          <PostCard :post="post" />
-        </li>
-      </ul>
-
-      <div class="mt-6 flex flex-col items-center gap-2">
-        <p v-if="loadMoreError" role="alert" class="text-sm text-destructive">{{ loadMoreError }}</p>
-        <button
-          v-if="hasMore"
-          type="button"
-          :disabled="loadingMore"
-          class="inline-flex h-10 items-center gap-2 rounded-full bg-muted px-5 text-sm font-medium text-foreground transition hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
-          @click="load(false)"
-        >
-          <Loader2 v-if="loadingMore" class="size-4 animate-spin" aria-hidden="true" />
-          {{ loadMoreError ? 'Tentar novamente' : 'Carregar mais' }}
+      <!-- Erro -->
+      <div v-else-if="status === 'error'" role="alert" :class="[ui.card, 'p-8 text-center']">
+        <AlertCircle class="mx-auto size-6 text-red-500" aria-hidden="true" />
+        <p class="mt-2 text-sm font-medium text-neutral-900">Não foi possível carregar o feed.</p>
+        <p class="mt-1 text-sm text-neutral-500">{{ errorMessage }}</p>
+        <button type="button" :class="[ui.btnBlack, 'mt-4']" @click="load(true)">
+          <RefreshCw class="size-4" aria-hidden="true" />
+          Tentar novamente
         </button>
-        <p v-else class="text-xs text-muted-foreground">Você chegou ao fim do feed.</p>
       </div>
-    </template>
-  </section>
+
+      <!-- Vazio -->
+      <div v-else-if="posts.length === 0" :class="[ui.card, 'p-10 text-center']">
+        <Newspaper class="mx-auto size-6 text-neutral-400" aria-hidden="true" />
+        <p class="mt-2 text-sm font-medium text-neutral-900">
+          {{ isSearching ? 'Nenhuma publicação encontrada.' : 'Ainda não há publicações na comunidade.' }}
+        </p>
+        <p class="mt-1 text-sm text-neutral-500">
+          {{ isSearching ? 'Tente buscar por outro termo.' : 'Quando alguém publicar, o post aparece aqui.' }}
+        </p>
+      </div>
+
+      <!-- Feed -->
+      <template v-else>
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <li v-for="post in posts" :key="post.id">
+            <PostCard :post="post" />
+          </li>
+        </ul>
+
+        <div class="mt-6 flex flex-col items-center gap-2">
+          <p v-if="loadMoreError" role="alert" class="text-sm text-red-600">{{ loadMoreError }}</p>
+          <button v-if="hasMore" type="button" :disabled="loadingMore" :class="ui.btnGray" @click="load(false)">
+            <Loader2 v-if="loadingMore" class="size-4 animate-spin" aria-hidden="true" />
+            {{ loadMoreError ? 'Tentar novamente' : 'Carregar mais' }}
+          </button>
+          <p v-else class="text-xs text-neutral-400">Você chegou ao fim do feed.</p>
+        </div>
+      </template>
+    </section>
+  </div>
 </template>

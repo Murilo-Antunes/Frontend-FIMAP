@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { CornerDownRight } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { commentService } from '../services/comment.service'
 import type { Comentario } from '../types/community.types'
+import { ui } from '../ui'
 import { authorHandle, authorName, formatFullDate, formatRelativeShort } from '../utils/format'
 import LikeButton from './LikeButton.vue'
 import UserAvatar from './UserAvatar.vue'
@@ -17,6 +17,7 @@ const auth = useAuthStore()
 
 const name = computed(() => authorName(props.comment.autor))
 const handle = computed(() => authorHandle(props.comment.autor))
+const isRoot = computed(() => props.depth === 0)
 
 const liked = ref(props.comment.curtiu)
 const likes = ref(props.comment.total_curtidas)
@@ -44,45 +45,47 @@ async function toggleLike(): Promise<void> {
 </script>
 
 <template>
-  <li class="list-none">
-    <div class="flex gap-3">
-      <UserAvatar :src="comment.autor.foto_perfil" :name="name" :size="depth > 0 ? 'sm' : 'md'" />
-      <div class="min-w-0 flex-1">
-        <div class="rounded-2xl bg-muted/60 px-4 py-3">
-          <p class="truncate text-sm font-semibold leading-tight text-foreground">{{ name }}</p>
-          <p class="truncate text-xs text-muted-foreground">
-            <span v-if="handle">{{ handle }} · </span>
-            <time :datetime="comment.data_criacao" :title="formatFullDate(comment.data_criacao)">
-              {{ formatRelativeShort(comment.data_criacao) }}
-            </time>
-          </p>
-          <p class="mt-2 whitespace-pre-line break-words text-[15px] leading-relaxed text-foreground/90">
-            {{ comment.mensagem }}
-          </p>
-        </div>
-
-        <div class="mt-1 flex items-center gap-1 text-muted-foreground">
-          <LikeButton :liked="liked" :count="likes" :busy="busy" @toggle="toggleLike" />
-          <button
-            type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            @click="emit('reply', comment)"
-          >
-            <CornerDownRight class="size-4" aria-hidden="true" />
-            Responder
-          </button>
-        </div>
-
-        <ul v-if="comment.respostas.length" class="mt-3 space-y-4 border-l border-border/60 pl-4">
-          <CommentCard
-            v-for="reply in comment.respostas"
-            :key="reply.id"
-            :comment="reply"
-            :depth="depth + 1"
-            @reply="emit('reply', $event)"
-          />
-        </ul>
+  <!-- Comentário raiz = card branco; respostas ficam numa caixa cinza dentro dele. -->
+  <li
+    class="list-none"
+    :class="isRoot ? [ui.card, 'mb-4 break-inside-avoid p-4'] : 'rounded-lg bg-[#f7f7f7] p-3'"
+  >
+    <div class="flex items-center gap-2.5">
+      <UserAvatar :src="comment.autor.foto_perfil" :name="name" size="sm" />
+      <div class="min-w-0">
+        <p class="truncate text-[13px] font-semibold leading-tight text-neutral-900">{{ name }}</p>
+        <p class="truncate text-[11px] text-neutral-400">
+          <span v-if="handle">{{ handle }} · </span>
+          <time :datetime="comment.data_criacao" :title="formatFullDate(comment.data_criacao)">
+            {{ formatRelativeShort(comment.data_criacao) }}
+          </time>
+        </p>
       </div>
     </div>
+
+    <p class="mt-2.5 whitespace-pre-line break-words text-sm leading-relaxed text-neutral-700">
+      {{ comment.mensagem }}
+    </p>
+
+    <div class="mt-2.5 flex items-center gap-4">
+      <LikeButton :liked="liked" :count="likes" :busy="busy" @toggle="toggleLike" />
+      <button
+        type="button"
+        class="rounded-md text-xs font-semibold text-neutral-900 outline-none transition hover:opacity-70 focus-visible:ring-2 focus-visible:ring-black/30"
+        @click="emit('reply', comment)"
+      >
+        Responder
+      </button>
+    </div>
+
+    <ul v-if="comment.respostas.length" class="mt-3 space-y-2">
+      <CommentCard
+        v-for="reply in comment.respostas"
+        :key="reply.id"
+        :comment="reply"
+        :depth="depth + 1"
+        @reply="emit('reply', $event)"
+      />
+    </ul>
   </li>
 </template>

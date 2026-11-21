@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
-import { MessageCircle } from 'lucide-vue-next'
+import { RouterLink, useRouter } from 'vue-router'
+import { MessageSquare } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { postService } from '../services/post.service'
 import type { Post } from '../types/community.types'
+import { ui } from '../ui'
 import { authorHandle, authorName, formatFullDate, formatRelativeShort, splitContent } from '../utils/format'
 import LikeButton from './LikeButton.vue'
 import PostMedia from './PostMedia.vue'
@@ -13,20 +14,11 @@ import UserAvatar from './UserAvatar.vue'
 const props = defineProps<{ post: Post }>()
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const parts = computed(() => splitContent(props.post.conteudo))
 const name = computed(() => authorName(props.post.autor))
 const handle = computed(() => authorHandle(props.post.autor))
-
-// ÚNICA MUDANÇA ESTRUTURAL deste arquivo em relação ao original: o avatar e o
-// nome agora levam ao perfil público do autor (em vez de herdar o link do
-// post). Para isso o overlay que abre o post deixou de ficar no <header> e
-// passou a ser uma camada própria (z-0) por baixo do cabeçalho (z-10).
-const perfilRoute = computed(() => {
-  const usernameSocial = props.post.autor?.username_social
-  if (!usernameSocial) return null // ⚠️ autor sem username_social (perfil ainda não configurado)
-  return { name: 'community-public-profile', params: { username: usernameSocial } }
-})
 
 const liked = ref(props.post.curtiu)
 const likes = ref(props.post.total_curtidas)
@@ -40,6 +32,15 @@ watch(
   },
 )
 
+/**
+ * O card inteiro abre o post, exceto cliques em botões e links (curtir, nome do autor).
+ * Feito por evento (e não por link sobreposto) para o botão de curtir nunca ser coberto.
+ */
+function openPost(event: MouseEvent): void {
+  if ((event.target as HTMLElement).closest('a, button')) return
+  void router.push({ name: 'community-post', params: { id: props.post.id } })
+}
+
 /** Atualização otimista; reverte se a API falhar. */
 async function toggleLike(): Promise<void> {
   if (busy.value) return
@@ -50,7 +51,7 @@ async function toggleLike(): Promise<void> {
   likes.value = Math.max(0, previous.likes + (liked.value ? 1 : -1))
 
   try {
-    const result = await postService.toggleLike(props.post.id, auth.usuario?.id ?? 0)
+    const result = await postService.toggleLike(props.post.id, auth.usuario?.id??0)
     liked.value = result.curtiu
     likes.value = result.total_curtidas
   } catch {
@@ -64,32 +65,19 @@ async function toggleLike(): Promise<void> {
 
 <template>
   <article
-    class="group relative flex h-full min-h-56 flex-col gap-4 rounded-2xl bg-white p-5 text-card-foreground shadow-sm ring-1 ring-border/50 transition focus-within:ring-2 focus-within:ring-ring hover:shadow-md"
+    :class="[ui.card, ui.cardHover, 'flex h-full min-h-44 cursor-pointer flex-col gap-3 p-4']"
+    @click="openPost"
   >
-    <!-- Camada que abre o post: cobre o card inteiro, mas fica ATRÁS do cabeçalho (z-0 < z-10),
-         então cliques no avatar/nome são capturados pelos links do cabeçalho primeiro. -->
-    <RouterLink
-      :to="{ name: 'community-post', params: { id: post.id } }"
-      class="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      :aria-label="`Abrir publicação de ${name}`"
-    />
-
-    <header class="relative z-10 flex items-center gap-3">
-      <component :is="perfilRoute ? RouterLink : 'span'" :to="perfilRoute ?? undefined" class="shrink-0 outline-none">
-        <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
-      </component>
-
+    <header class="flex items-center gap-3">
+      <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
       <div class="min-w-0">
-        <p class="truncate text-sm font-semibold leading-tight text-foreground">
-          <component
-            :is="perfilRoute ? RouterLink : 'span'"
-            :to="perfilRoute ?? undefined"
-            class="outline-none hover:underline"
-          >
-            {{ name }}
-          </component>
-        </p>
-        <p class="truncate text-xs text-muted-foreground">
+        <RouterLink
+          :to="{ name: 'community-post', params: { id: post.id } }"
+          class="block truncate text-sm font-semibold leading-tight text-neutral-900 outline-none focus-visible:underline"
+        >
+          {{ name }}
+        </RouterLink>
+        <p class="truncate text-[11px] text-neutral-400">
           <span v-if="handle">{{ handle }} · </span>
           <time :datetime="post.data_criacao" :title="formatFullDate(post.data_criacao)">
             {{ formatRelativeShort(post.data_criacao) }}
@@ -100,22 +88,23 @@ async function toggleLike(): Promise<void> {
 
     <p
       v-if="parts.text"
-      class="relative z-10 line-clamp-6 whitespace-pre-line break-words text-[15px] leading-relaxed text-foreground/90"
+      class="line-clamp-6 whitespace-pre-line break-words text-sm leading-relaxed text-neutral-700"
     >
       {{ parts.text }}
     </p>
-    <p v-else-if="!parts.media.length" class="relative z-10 text-sm italic text-muted-foreground">
-      Publicação sem conteúdo.
-    </p>
+    <p v-else-if="!parts.media.length" class="text-sm italic text-neutral-400">Publicação sem conteúdo.</p>
 
-    <div v-if="parts.media.length" class="pointer-events-none relative z-10">
+    <div v-if="parts.media.length" class="pointer-events-none">
       <PostMedia :items="parts.media" compact :limit="4" />
     </div>
 
-    <footer class="relative z-10 mt-auto flex items-center gap-1 pt-1 text-muted-foreground">
+    <footer class="mt-auto flex items-center gap-4 pt-1">
       <LikeButton :liked="liked" :count="likes" :busy="busy" @toggle="toggleLike" />
-      <span class="inline-flex h-8 items-center gap-1.5 px-2.5 text-xs font-medium" :aria-label="`${post.total_comentarios} comentários`">
-        <MessageCircle class="size-4" aria-hidden="true" />
+      <span
+        class="inline-flex items-center gap-1.5 text-xs text-neutral-500"
+        :aria-label="`${post.total_comentarios} comentários`"
+      >
+        <MessageSquare class="size-4" aria-hidden="true" />
         <span class="tabular-nums">{{ post.total_comentarios }}</span>
       </span>
     </footer>

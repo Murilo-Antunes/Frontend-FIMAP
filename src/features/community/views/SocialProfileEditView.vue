@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isCancel } from 'axios'
 import { useDebounceFn } from '@vueuse/core'
-import { AtSign, Camera, Check, Contact, Loader2, MapPin, Plus, Trash2, X, AlertCircle } from 'lucide-vue-next'
+import { AtSign, Camera, Check, CirclePlus, Contact, Loader2, MapPin, Save, Trash2, X, AlertCircle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSocialProfileStore } from '@/stores/social-profile.store'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -23,6 +23,7 @@ import {
 import type { Badge, PerfilSocialPayload, UsernameStatus } from '../types/community.types'
 import BadgeIcon from '../components/BadgeIcon.vue'
 import BadgePickerDialog from '../components/BadgePickerDialog.vue'
+import { ui } from '../ui'
 
 const MAX_FEATURED_BADGES = 3
 
@@ -188,7 +189,7 @@ watch(
 const usernameLabel = computed(() => {
   switch (usernameStatus.value) {
     case 'checking':
-      return { text: 'Verificando…', tone: 'text-muted-foreground' }
+      return { text: 'Verificando…', tone: 'text-neutral-400' }
     case 'available':
       return { text: 'Disponível', tone: 'text-indigo-600' }
     case 'taken':
@@ -361,19 +362,18 @@ async function onSubmit(): Promise<void> {
 
 /* -------------------------------- Estilos -------------------------------- */
 
-const pillButton =
-  'inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
-const fieldBox =
-  'flex items-center gap-3 rounded-xl bg-muted/60 px-4 text-sm transition focus-within:bg-muted/80 focus-within:ring-2 focus-within:ring-ring/40'
-const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground'
+const pillButton = ui.btnBlack
+const fieldBox = `flex items-center gap-3 px-4 text-sm ${ui.field}`
+const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-neutral-900 outline-none placeholder:text-neutral-400'
 </script>
 
 <template>
+  <div :class="ui.page">
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
     <header class="flex items-end justify-between gap-4">
       <div>
-        <p class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Comunidade Fimap</p>
-        <h1 class="text-xl font-semibold text-foreground">{{ pageTitle }}</h1>
+        <p :class="ui.eyebrow">Comunidade Fimap</p>
+        <h1 class="text-xl font-semibold text-neutral-900">{{ pageTitle }}</h1>
       </div>
       <button v-if="loadStatus === 'ready'" type="submit" form="social-profile-form" :class="pillButton" :disabled="!canSubmit">
         <Loader2 v-if="submitting" class="size-4 animate-spin" aria-hidden="true" />
@@ -384,18 +384,18 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
 
     <!-- Carregando -->
     <div v-if="loadStatus === 'loading'" class="mt-6 grid animate-pulse gap-6 lg:grid-cols-[5fr_8fr]" aria-busy="true">
-      <div class="h-56 rounded-2xl bg-card ring-1 ring-border/50" />
+      <div :class="[ui.card, 'h-56']" />
       <div class="space-y-4">
-        <div class="h-14 rounded-xl bg-card ring-1 ring-border/50" />
-        <div class="h-36 rounded-xl bg-card ring-1 ring-border/50" />
-        <div class="h-14 w-2/3 rounded-xl bg-card ring-1 ring-border/50" />
+        <div :class="[ui.card, 'h-14']" />
+        <div :class="[ui.card, 'h-36']" />
+        <div :class="[ui.card, 'h-14 w-2/3']" />
       </div>
     </div>
 
     <!-- Erro ao carregar -->
-    <div v-else-if="loadStatus === 'error'" role="alert" class="mt-6 rounded-2xl bg-card p-6 text-center ring-1 ring-border/50">
-      <p class="text-sm font-medium text-foreground">Não foi possível carregar seu perfil.</p>
-      <p class="mt-1 text-sm text-muted-foreground">{{ loadError }}</p>
+    <div v-else-if="loadStatus === 'error'" role="alert" :class="[ui.card, 'mt-6 p-6 text-center']">
+      <p class="text-sm font-medium text-neutral-900">Não foi possível carregar seu perfil.</p>
+      <p class="mt-1 text-sm text-neutral-500">{{ loadError }}</p>
       <button type="button" :class="[pillButton, 'mt-4']" @click="bootstrap">Tentar novamente</button>
     </div>
 
@@ -404,7 +404,7 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
       <div
         v-if="formError"
         role="alert"
-        class="flex items-start gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        class="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         <AlertCircle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         {{ formError }}
@@ -420,33 +420,37 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
 
       <div class="grid gap-6 lg:grid-cols-[5fr_8fr]">
         <!-- Foto -->
-        <div class="flex flex-col items-center justify-center gap-3 rounded-2xl bg-card p-8 shadow-sm ring-1 ring-border/50">
-          <button
-            type="button"
-            aria-label="Alterar foto de perfil"
-            class="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:size-28"
-            @click="photoInput?.click()"
-          >
+        <div :class="[ui.card, 'flex flex-col items-center justify-center gap-3 p-8 lg:self-start']">
+          <div class="relative">
             <!-- Sem foto: ícone de câmera centralizado. Com foto: ela ocupa o círculo inteiro,
                  recortada e redimensionada (object-cover) para o mesmo tamanho padrão. -->
-            <img
-              v-if="currentPhoto"
-              :src="currentPhoto"
-              alt="Foto de perfil"
-              class="size-full object-cover"
-              loading="lazy"
-              decoding="async"
-              referrerpolicy="no-referrer"
-            />
-            <Camera v-else class="size-8 text-muted-foreground transition group-hover:text-foreground" aria-hidden="true" />
-
-            <!-- Ao passar o mouse sobre a foto já definida, reforça que dá para trocar -->
-            <span
-              v-if="currentPhoto"
-              class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100"
+            <button
+              type="button"
+              aria-label="Alterar foto de perfil"
+              class="flex size-24 items-center justify-center overflow-hidden rounded-full bg-[#ebebeb] outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 sm:size-28"
+              @click="photoInput?.click()"
             >
-              <Camera class="size-6 text-white" aria-hidden="true" />
-            </span>
+              <img
+                v-if="currentPhoto"
+                :src="currentPhoto"
+                alt="Foto de perfil"
+                class="size-full object-cover"
+                decoding="async"
+                referrerpolicy="no-referrer"
+              />
+              <Camera v-else class="size-8 text-neutral-500" aria-hidden="true" />
+            </button>
+
+            <!-- Selo de câmera preto no canto, como na referência (só quando já há foto) -->
+            <button
+              v-if="currentPhoto"
+              type="button"
+              aria-label="Trocar foto de perfil"
+              class="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-black text-white outline-none transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2"
+              @click="photoInput?.click()"
+            >
+              <Camera class="size-4" aria-hidden="true" />
+            </button>
 
             <input
               ref="photoInput"
@@ -457,19 +461,19 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
               aria-hidden="true"
               @change="onPhotoSelected"
             />
-          </button>
+          </div>
 
           <button
             v-if="currentPhoto"
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-neutral-400 transition hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
             @click="onRemovePhoto"
           >
             <Trash2 class="size-3.5" aria-hidden="true" />
             Remover foto
           </button>
-          <p v-else class="text-center text-xs text-muted-foreground">JPG, PNG ou WebP até 5 MB</p>
-          <p v-if="photoError" role="alert" class="text-center text-xs text-destructive">{{ photoError }}</p>
+          <p v-else class="text-center text-xs text-neutral-400">JPG, PNG ou WebP até 5 MB</p>
+          <p v-if="photoError" role="alert" class="text-center text-xs text-red-600">{{ photoError }}</p>
         </div>
 
         <!-- Campos -->
@@ -477,11 +481,11 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
           <div class="grid gap-4 sm:grid-cols-[3fr_2fr]">
             <div>
               <div class="mb-1.5 flex items-baseline justify-between">
-                <label for="field-nome_exibicao" class="text-sm font-medium text-foreground">Nome de Exibição</label>
-                <span class="text-xs text-muted-foreground">{{ form.nome_exibicao.length }}/{{ NOME_EXIBICAO_MAX }}</span>
+                <label for="field-nome_exibicao" class="text-sm font-medium text-neutral-900">Nome de Exibição</label>
+                <span class="text-xs text-neutral-400">{{ form.nome_exibicao.length }}/{{ NOME_EXIBICAO_MAX }}</span>
               </div>
               <div :class="fieldBox">
-                <Contact class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <Contact class="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
                 <input
                   id="field-nome_exibicao"
                   v-model="form.nome_exibicao"
@@ -494,20 +498,20 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
                   :aria-describedby="fieldErrors.nome_exibicao ? 'error-nome_exibicao' : undefined"
                 />
               </div>
-              <p v-if="fieldErrors.nome_exibicao" id="error-nome_exibicao" role="alert" class="mt-1.5 text-xs text-destructive">
+              <p v-if="fieldErrors.nome_exibicao" id="error-nome_exibicao" role="alert" class="mt-1.5 text-xs text-red-600">
                 {{ fieldErrors.nome_exibicao }}
               </p>
             </div>
 
             <div>
               <div class="mb-1.5 flex items-baseline justify-between">
-                <label for="field-username_social" class="text-sm font-medium text-foreground">Nome de Usuário</label>
+                <label for="field-username_social" class="text-sm font-medium text-neutral-900">Nome de Usuário</label>
                 <span v-if="usernameLabel" class="text-xs font-medium" :class="usernameLabel.tone" aria-live="polite">
                   {{ usernameLabel.text }}
                 </span>
               </div>
               <div :class="fieldBox">
-                <AtSign class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <AtSign class="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
                 <input
                   id="field-username_social"
                   v-model="form.username_social"
@@ -528,9 +532,9 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
                 >
                   <Check class="size-3" />
                 </span>
-                <Loader2 v-else-if="usernameStatus === 'checking'" class="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                <Loader2 v-else-if="usernameStatus === 'checking'" class="size-4 shrink-0 animate-spin text-neutral-400" aria-hidden="true" />
               </div>
-              <p v-if="fieldErrors.username_social" id="error-username_social" role="alert" class="mt-1.5 text-xs text-destructive">
+              <p v-if="fieldErrors.username_social" id="error-username_social" role="alert" class="mt-1.5 text-xs text-red-600">
                 {{ fieldErrors.username_social }}
               </p>
             </div>
@@ -538,8 +542,8 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
 
           <div>
             <div class="mb-1.5 flex items-baseline justify-between">
-              <label for="field-biografia_social" class="text-sm font-medium text-foreground">Biografia Social</label>
-              <span class="text-xs text-muted-foreground">{{ form.biografia_social.length }}/{{ BIOGRAFIA_MAX }} caracteres</span>
+              <label for="field-biografia_social" class="text-sm font-medium text-neutral-900">Biografia Social</label>
+              <span class="text-xs text-neutral-400">{{ form.biografia_social.length }}/{{ BIOGRAFIA_MAX }} caracteres</span>
             </div>
             <textarea
               id="field-biografia_social"
@@ -547,21 +551,21 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
               rows="5"
               :maxlength="BIOGRAFIA_MAX"
               placeholder="Conte um pouco sobre você e seus objetivos financeiros"
-              class="w-full resize-none rounded-xl bg-muted/60 px-4 py-3.5 text-sm leading-relaxed text-foreground outline-none transition placeholder:text-muted-foreground focus:bg-muted/80 focus:ring-2 focus:ring-ring/40"
+              :class="[ui.field, 'w-full resize-none px-4 py-3.5 text-sm leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400']"
               :aria-invalid="Boolean(fieldErrors.biografia_social)"
               :aria-describedby="fieldErrors.biografia_social ? 'error-biografia_social' : undefined"
             />
-            <p v-if="fieldErrors.biografia_social" id="error-biografia_social" role="alert" class="mt-1.5 text-xs text-destructive">
+            <p v-if="fieldErrors.biografia_social" id="error-biografia_social" role="alert" class="mt-1.5 text-xs text-red-600">
               {{ fieldErrors.biografia_social }}
             </p>
           </div>
 
           <div class="sm:w-2/3">
-            <label for="field-localizacao_estado" class="mb-1.5 block text-sm font-medium text-foreground">
+            <label for="field-localizacao_estado" class="mb-1.5 block text-sm font-medium text-neutral-900">
               Localização / Estado
             </label>
             <div :class="fieldBox">
-              <MapPin class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <MapPin class="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
               <input
                 id="field-localizacao_estado"
                 v-model="form.localizacao_estado"
@@ -574,7 +578,7 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
                 :aria-describedby="fieldErrors.localizacao_estado ? 'error-localizacao_estado' : undefined"
               />
             </div>
-            <p v-if="fieldErrors.localizacao_estado" id="error-localizacao_estado" role="alert" class="mt-1.5 text-xs text-destructive">
+            <p v-if="fieldErrors.localizacao_estado" id="error-localizacao_estado" role="alert" class="mt-1.5 text-xs text-red-600">
               {{ fieldErrors.localizacao_estado }}
             </p>
           </div>
@@ -582,20 +586,20 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
       </div>
 
       <!-- Badges em destaque -->
-      <div v-if="showBadgesSection" class="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/50">
+      <div v-if="showBadgesSection" :class="[ui.card, 'p-5']">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-sm font-medium text-foreground">Badges em Destaque no Perfil</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">
+            <h2 class="text-sm font-medium text-neutral-900">Badges em Destaque no Perfil</h2>
+            <p class="mt-0.5 text-xs text-neutral-400">
               Escolha até {{ MAX_FEATURED_BADGES }} insígnias que aparecerão no seu cartão público de membro.
             </p>
           </div>
-          <span class="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+          <span class="shrink-0 rounded-full bg-[#f3f3f3] px-2.5 py-1 text-xs text-neutral-500">
             {{ featuredIds.length }} de {{ MAX_FEATURED_BADGES }}
           </span>
         </div>
 
-        <p v-if="badges.length === 0" class="mt-4 text-sm text-muted-foreground">
+        <p v-if="badges.length === 0" class="mt-4 text-sm text-neutral-500">
           Você ainda não conquistou nenhuma badge. Elas aparecem aqui conforme você usa o Fimap.
         </p>
 
@@ -604,16 +608,16 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
             <li
               v-for="badge in featuredBadges"
               :key="badge.id"
-              class="flex items-center gap-3 rounded-xl bg-muted/60 p-3"
+              class="flex items-center gap-3 rounded-xl bg-[#f3f3f3] p-3"
             >
               <BadgeIcon :icone="badge.icone" />
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-foreground">{{ badge.nome }}</p>
-                <p class="truncate text-xs text-muted-foreground">{{ badge.descricao }}</p>
+                <p class="truncate text-sm font-medium text-neutral-900">{{ badge.nome }}</p>
+                <p class="truncate text-xs text-neutral-400">{{ badge.descricao }}</p>
               </div>
               <button
                 type="button"
-                class="rounded-full p-1 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                class="rounded-full p-1 text-neutral-400 transition hover:bg-white hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
                 :aria-label="`Remover ${badge.nome} dos destaques`"
                 @click="removeFeatured(badge.id)"
               >
@@ -621,14 +625,14 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
               </button>
             </li>
           </ul>
-          <p v-else class="mt-4 text-sm text-muted-foreground">Nenhuma badge em destaque por enquanto.</p>
+          <p v-else class="mt-4 text-sm text-neutral-500">Nenhuma badge em destaque por enquanto.</p>
 
           <button
             type="button"
-            class="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-muted px-4 text-sm font-medium text-foreground transition hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            :class="[ui.btnGray, 'mt-4']"
             @click="pickerOpen = true"
           >
-            <Plus class="size-4" aria-hidden="true" />
+            <CirclePlus class="size-4" aria-hidden="true" />
             Alterar Badges em Destaque
           </button>
         </template>
@@ -638,10 +642,10 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
       <div class="flex flex-col items-end gap-2">
         <button type="submit" :class="pillButton" :disabled="!canSubmit">
           <Loader2 v-if="submitting" class="size-4 animate-spin" aria-hidden="true" />
-          <Check v-else class="size-4" aria-hidden="true" />
+          <Save v-else class="size-4" aria-hidden="true" />
           {{ bottomButtonLabel }}
         </button>
-        <p class="text-xs text-muted-foreground">
+        <p class="text-xs text-neutral-400">
           {{
             isCreate
               ? 'Você poderá editar essas informações quando quiser.'
@@ -659,4 +663,5 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-foreground outline-n
       @confirm="applyFeatured"
     />
   </section>
+  </div>
 </template>

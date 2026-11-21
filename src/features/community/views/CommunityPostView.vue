@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { isAxiosError, isCancel } from 'axios'
-import { AlertCircle, ArrowLeft, Loader2, MessageCircle, RefreshCw, Send, X } from 'lucide-vue-next'
+import { AlertCircle, ArrowLeft, ArrowUp, Loader2, MessageSquare, RefreshCw, X } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSocialProfileStore } from '@/stores/social-profile.store'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -13,6 +13,7 @@ import { authorHandle, authorName, formatFullDate, formatRelativeShort, splitCon
 import CommentCard from '../components/CommentCard.vue'
 import LikeButton from '../components/LikeButton.vue'
 import PostMedia from '../components/PostMedia.vue'
+import { ui } from '../ui'
 import UserAvatar from '../components/UserAvatar.vue'
 
 const props = defineProps<{ postId: number }>()
@@ -103,7 +104,7 @@ async function toggleLike(): Promise<void> {
   }
 }
 
-function startReply(comment: Comentario): void {
+function startReply(comment: Comentario | null): void {
   replyingTo.value = comment
   sendError.value = ''
   document.getElementById('comment-composer')?.focus()
@@ -197,166 +198,181 @@ onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <section class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-    <p class="mb-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-      Comunidade • Publicação
-    </p>
+  <div :class="ui.page">
+    <section class="mx-auto flex w-full max-w-7xl flex-col px-4 py-6 sm:px-6">
+      <p :class="[ui.eyebrow, 'mb-4']">Comunidade • Publicação</p>
 
-    <!-- Carregando -->
-    <div v-if="status === 'loading'" class="animate-pulse space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-border/50" aria-busy="true" aria-label="Carregando publicação">
-      <div class="flex items-center gap-3">
-        <div class="size-12 rounded-full bg-muted" />
-        <div class="space-y-2">
-          <div class="h-3.5 w-36 rounded bg-muted" />
-          <div class="h-3 w-24 rounded bg-muted" />
+      <!-- Carregando -->
+      <div v-if="status === 'loading'" :class="[ui.card, 'animate-pulse space-y-5 p-5']" aria-busy="true" aria-label="Carregando publicação">
+        <div class="flex items-center gap-3">
+          <div class="size-10 rounded-full bg-[#eeeeee]" />
+          <div class="space-y-2">
+            <div class="h-3.5 w-36 rounded bg-[#eeeeee]" />
+            <div class="h-3 w-24 rounded bg-[#f3f3f3]" />
+          </div>
         </div>
-      </div>
-      <div class="space-y-2.5">
-        <div class="h-3.5 w-full rounded bg-muted" />
-        <div class="h-3.5 w-11/12 rounded bg-muted" />
-        <div class="h-3.5 w-3/5 rounded bg-muted" />
-      </div>
-    </div>
-
-    <!-- Não encontrado -->
-    <div v-else-if="status === 'not-found'" class="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-border/50">
-      <p class="text-base font-semibold text-foreground">Publicação não encontrada</p>
-      <p class="mt-1 text-sm text-muted-foreground">Ela pode ter sido removida pelo autor.</p>
-      <RouterLink
-        :to="{ name: 'community' }"
-        class="mt-5 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <ArrowLeft class="size-4" aria-hidden="true" />
-        Voltar à comunidade
-      </RouterLink>
-    </div>
-
-    <!-- Erro -->
-    <div v-else-if="status === 'error'" role="alert" class="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-border/50">
-      <AlertCircle class="mx-auto size-6 text-destructive" aria-hidden="true" />
-      <p class="mt-2 text-sm font-medium text-foreground">Não foi possível carregar a publicação.</p>
-      <p class="mt-1 text-sm text-muted-foreground">{{ errorMessage }}</p>
-      <button
-        type="button"
-        class="mt-5 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        @click="load"
-      >
-        <RefreshCw class="size-4" aria-hidden="true" />
-        Tentar novamente
-      </button>
-    </div>
-
-    <!-- Post -->
-    <article v-else-if="post" class="space-y-5 rounded-2xl bg-white p-6 text-card-foreground shadow-sm ring-1 ring-border/50 sm:p-8">
-      <header class="flex items-center gap-3">
-        <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="lg" />
-        <div class="min-w-0">
-          <h1 class="truncate text-base font-semibold leading-tight text-foreground">{{ name }}</h1>
-          <p class="truncate text-xs text-muted-foreground">
-            <span v-if="handle">{{ handle }} • </span>
-            <time :datetime="post.data_criacao" :title="formatFullDate(post.data_criacao)">
-              {{ formatRelativeShort(post.data_criacao) }}
-            </time>
-            <span v-if="edited"> • Editado</span>
-          </p>
-        </div>
-      </header>
-
-      <p v-if="parts.text" class="whitespace-pre-line break-words text-[15px] leading-relaxed text-foreground/90">
-        {{ parts.text }}
-      </p>
-      <p v-else-if="!parts.media.length" class="text-sm italic text-muted-foreground">Publicação sem conteúdo.</p>
-
-      <PostMedia v-if="parts.media.length" :items="parts.media" />
-
-      <div class="flex items-center gap-1 border-t border-border/60 pt-3 text-muted-foreground">
-        <LikeButton :liked="liked" :count="likes" :busy="likeBusy" @toggle="toggleLike" />
-        <span class="inline-flex h-8 items-center gap-1.5 px-2.5 text-xs font-medium">
-          <MessageCircle class="size-4" aria-hidden="true" />
-          <span class="tabular-nums">{{ commentsStatus === 'ready' ? totalComments : post.total_comentarios }}</span>
-        </span>
-      </div>
-    </article>
-
-    <!-- Respostas -->
-    <section v-if="post" class="mt-6" aria-labelledby="comments-title">
-      <div class="mb-3 flex items-center justify-between">
-        <h2 id="comments-title" class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Respostas</h2>
-        <div class="flex items-center gap-1 text-xs">
-          <button
-            v-for="option in ([['relevantes', 'Mais relevantes'], ['recentes', 'Mais recentes']] as const)"
-            :key="option[0]"
-            type="button"
-            :aria-pressed="commentOrder === option[0]"
-            class="rounded-full px-3 py-1 font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :class="commentOrder === option[0] ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
-            @click="commentOrder = option[0]"
-          >
-            {{ option[1] }}
-          </button>
+        <div class="space-y-2.5">
+          <div class="h-3.5 w-full rounded bg-[#f3f3f3]" />
+          <div class="h-3.5 w-11/12 rounded bg-[#f3f3f3]" />
+          <div class="h-3.5 w-3/5 rounded bg-[#f3f3f3]" />
         </div>
       </div>
 
-      <div v-if="commentsStatus === 'loading'" class="flex justify-center py-8 text-muted-foreground" role="status" aria-label="Carregando respostas">
-        <Loader2 class="size-5 animate-spin" aria-hidden="true" />
+      <!-- Não encontrado -->
+      <div v-else-if="status === 'not-found'" :class="[ui.card, 'p-10 text-center']">
+        <p class="text-base font-semibold text-neutral-900">Publicação não encontrada</p>
+        <p class="mt-1 text-sm text-neutral-500">Ela pode ter sido removida pelo autor.</p>
+        <RouterLink :to="{ name: 'community' }" :class="[ui.btnBlack, 'mt-5']">
+          <ArrowLeft class="size-4" aria-hidden="true" />
+          Voltar à comunidade
+        </RouterLink>
       </div>
 
-      <div v-else-if="commentsStatus === 'error'" role="alert" class="rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-border/50">
-        <p class="text-sm font-medium text-foreground">Não foi possível carregar as respostas.</p>
-        <p class="mt-1 text-sm text-muted-foreground">{{ commentsError }}</p>
-        <button
-          type="button"
-          class="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          @click="controller && loadComments(controller.signal)"
-        >
+      <!-- Erro -->
+      <div v-else-if="status === 'error'" role="alert" :class="[ui.card, 'p-10 text-center']">
+        <AlertCircle class="mx-auto size-6 text-red-500" aria-hidden="true" />
+        <p class="mt-2 text-sm font-medium text-neutral-900">Não foi possível carregar a publicação.</p>
+        <p class="mt-1 text-sm text-neutral-500">{{ errorMessage }}</p>
+        <button type="button" :class="[ui.btnBlack, 'mt-5']" @click="load">
           <RefreshCw class="size-4" aria-hidden="true" />
           Tentar novamente
         </button>
       </div>
 
-      <p v-else-if="comments.length === 0" class="rounded-2xl bg-white p-8 text-center text-sm text-muted-foreground shadow-sm ring-1 ring-border/50">
-        Ainda não há respostas. Seja a primeira pessoa a comentar.
-      </p>
+      <!-- Post -->
+      <article v-else-if="post" :class="[ui.card, 'space-y-4 p-5']">
+        <header class="flex items-center gap-3">
+          <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+          <div class="min-w-0">
+            <h1 class="truncate text-[15px] font-semibold leading-tight text-neutral-900">{{ name }}</h1>
+            <p class="truncate text-[11px] text-neutral-400">
+              <span v-if="handle">{{ handle }} • </span>
+              <time :datetime="post.data_criacao" :title="formatFullDate(post.data_criacao)">
+                {{ formatRelativeShort(post.data_criacao) }}
+              </time>
+              <span v-if="edited"> • Editado</span>
+            </p>
+          </div>
+        </header>
 
-      <ul v-else class="space-y-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-border/50 sm:p-6">
-        <CommentCard v-for="comment in sortedComments" :key="comment.id" :comment="comment" @reply="startReply" />
-      </ul>
+        <p v-if="parts.text" class="whitespace-pre-line break-words text-sm leading-relaxed text-neutral-700">
+          {{ parts.text }}
+        </p>
+        <p v-else-if="!parts.media.length" class="text-sm italic text-neutral-400">Publicação sem conteúdo.</p>
 
-      <!-- Composer -->
-      <form
-        class="sticky bottom-4 z-10 mt-4 rounded-2xl bg-white p-3 shadow-md ring-1 ring-border"
-        @submit.prevent="submitComment"
-      >
-        <div v-if="replyingTo" class="mb-2 flex items-center justify-between rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-          <span class="truncate">Respondendo a <strong class="font-semibold text-foreground">{{ replyTargetName }}</strong></span>
-          <button type="button" class="rounded p-0.5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Cancelar resposta" @click="replyingTo = null">
-            <X class="size-3.5" aria-hidden="true" />
-          </button>
+        <PostMedia v-if="parts.media.length" :items="parts.media" />
+
+        <!-- Totais -->
+        <div class="flex items-center justify-between pt-1 text-xs text-neutral-400">
+          <p>
+            <span class="font-semibold text-neutral-900 tabular-nums">{{ likes }}</span>
+            {{ likes === 1 ? 'curtida' : 'curtidas' }}
+          </p>
+          <p>
+            <span class="tabular-nums">{{ commentsStatus === 'ready' ? totalComments : post.total_comentarios }}</span>
+            {{ (commentsStatus === 'ready' ? totalComments : post.total_comentarios) === 1 ? 'comentário' : 'comentários' }}
+          </p>
         </div>
 
-        <div class="flex items-end gap-2">
-          <label for="comment-composer" class="sr-only">Escreva uma resposta</label>
-          <textarea
-            id="comment-composer"
-            v-model="draft"
-            rows="1"
-            :maxlength="MAX_COMMENT"
-            :placeholder="`Escreva uma resposta para ${replyTargetName}...`"
-            class="max-h-40 min-h-10 flex-1 resize-none rounded-xl bg-white px-4 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:bg-white focus:ring-2 focus:ring-ring/40"
-            @keydown.enter.exact.prevent="submitComment"
-          />
+        <!-- Ações -->
+        <div class="flex items-center gap-8 pt-1">
+          <LikeButton variant="label" :liked="liked" :count="likes" :busy="likeBusy" @toggle="toggleLike" />
           <button
-            type="submit"
-            :disabled="!canSend"
-            class="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-neutral-900 outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-black/30"
+            @click="startReply(null)"
           >
-            <Loader2 v-if="sending" class="size-4 animate-spin" aria-hidden="true" />
-            <Send v-else class="size-4" aria-hidden="true" />
-            Responder
+            <MessageSquare class="size-[18px]" aria-hidden="true" />
+            Comentar
           </button>
         </div>
-        <p v-if="sendError" role="alert" class="mt-2 text-xs text-destructive">{{ sendError }}</p>
-      </form>
+      </article>
+
+      <!-- Respostas -->
+      <section v-if="post" class="mt-8" aria-labelledby="comments-title">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 id="comments-title" class="flex items-center gap-2 text-base font-semibold text-neutral-900">
+            Respostas
+            <span class="rounded-full bg-[#e8e8e8] px-2 py-0.5 text-xs font-medium tabular-nums text-neutral-600">
+              {{ commentsStatus === 'ready' ? totalComments : post.total_comentarios }}
+            </span>
+          </h2>
+          <div class="inline-flex rounded-full bg-[#f3f3f3] p-0.5 text-xs" role="group" aria-label="Ordenar respostas">
+            <button
+              v-for="option in ([['relevantes', 'Mais relevantes'], ['recentes', 'Mais recentes']] as const)"
+              :key="option[0]"
+              type="button"
+              :aria-pressed="commentOrder === option[0]"
+              class="rounded-full px-3 py-1 outline-none transition focus-visible:ring-2 focus-visible:ring-black/30"
+              :class="
+                commentOrder === option[0]
+                  ? 'bg-white font-semibold text-neutral-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+                  : 'font-medium text-neutral-400 hover:text-neutral-700'
+              "
+              @click="commentOrder = option[0]"
+            >
+              {{ option[1] }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="commentsStatus === 'loading'" class="flex justify-center py-8 text-neutral-400" role="status" aria-label="Carregando respostas">
+          <Loader2 class="size-5 animate-spin" aria-hidden="true" />
+        </div>
+
+        <div v-else-if="commentsStatus === 'error'" role="alert" :class="[ui.card, 'p-6 text-center']">
+          <p class="text-sm font-medium text-neutral-900">Não foi possível carregar as respostas.</p>
+          <p class="mt-1 text-sm text-neutral-500">{{ commentsError }}</p>
+          <button type="button" :class="[ui.btnBlack, 'mt-4']" @click="controller && loadComments(controller.signal)">
+            <RefreshCw class="size-4" aria-hidden="true" />
+            Tentar novamente
+          </button>
+        </div>
+
+        <p v-else-if="comments.length === 0" :class="[ui.card, 'p-8 text-center text-sm text-neutral-500']">
+          Ainda não há respostas. Seja a primeira pessoa a comentar.
+        </p>
+
+        <ul v-else class="columns-1 gap-4 md:columns-2">
+          <CommentCard v-for="comment in sortedComments" :key="comment.id" :comment="comment" @reply="startReply" />
+        </ul>
+
+        <!-- Campo de resposta -->
+        <form
+          :class="[ui.card, 'sticky bottom-0 z-10 mt-4 rounded-b-none p-3 sm:rounded-b-xl']"
+          @submit.prevent="submitComment"
+        >
+          <div v-if="replyingTo" class="mb-2 flex items-center justify-between rounded-full bg-[#f3f3f3] px-4 py-1.5 text-xs text-neutral-500">
+            <span class="truncate">Respondendo a <strong class="font-semibold text-neutral-900">{{ replyTargetName }}</strong></span>
+            <button type="button" class="rounded p-0.5 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-black/30" aria-label="Cancelar resposta" @click="replyingTo = null">
+              <X class="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div class="flex items-end gap-3">
+            <label for="comment-composer" class="sr-only">Escreva uma resposta</label>
+            <textarea
+              id="comment-composer"
+              v-model="draft"
+              rows="1"
+              :maxlength="MAX_COMMENT"
+              :placeholder="`Escreva uma resposta para ${replyTargetName}...`"
+              :class="[ui.fieldGray, 'max-h-40 min-h-10 flex-1 resize-none px-5 py-2.5']"
+              @keydown.enter.exact.prevent="submitComment"
+            />
+            <button
+              type="submit"
+              :disabled="!canSend"
+              aria-label="Enviar resposta"
+              class="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-black text-white outline-none transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Loader2 v-if="sending" class="size-4 animate-spin" aria-hidden="true" />
+              <ArrowUp v-else class="size-[18px]" aria-hidden="true" />
+            </button>
+          </div>
+          <p v-if="sendError" role="alert" class="mt-2 px-2 text-xs text-red-600">{{ sendError }}</p>
+        </form>
+      </section>
     </section>
-  </section>
+  </div>
 </template>

@@ -31,7 +31,7 @@ const showImage = computed(() => Boolean(props.src) && !failed.value)
 
 <template>
   <span
-    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-semibold text-muted-foreground"
+    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 font-semibold text-neutral-500"
     :class="SIZES[size]"
   >
     <img

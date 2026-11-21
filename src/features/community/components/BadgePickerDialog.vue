@@ -106,20 +106,20 @@ function onKeydown(event: KeyboardEvent): void {
         aria-modal="true"
         aria-labelledby="badge-picker-title"
         tabindex="-1"
-        class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-card text-card-foreground shadow-xl outline-none sm:rounded-2xl"
+        class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-white text-neutral-900 shadow-xl outline-none sm:rounded-2xl"
         @keydown="onKeydown"
       >
         <header class="flex items-start justify-between gap-4 p-5 pb-3">
           <div>
             <h2 id="badge-picker-title" class="text-base font-semibold">Badges em destaque</h2>
-            <p class="mt-0.5 text-xs text-muted-foreground">
+            <p class="mt-0.5 text-xs text-neutral-400">
               Escolha até {{ max }} insígnias para o seu cartão público.
-              <span class="font-medium text-foreground">{{ draft.length }} de {{ max }}</span>
+              <span class="font-medium text-neutral-900">{{ draft.length }} de {{ max }}</span>
             </p>
           </div>
           <button
             type="button"
-            class="rounded-full p-1.5 text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="rounded-full p-1.5 text-neutral-400 transition hover:bg-[#f3f3f3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
             aria-label="Fechar"
             @click="close"
           >
@@ -130,7 +130,7 @@ function onKeydown(event: KeyboardEvent): void {
         <ul class="flex-1 space-y-2 overflow-y-auto px-5 pb-2">
           <li v-for="badge in badges" :key="badge.id">
             <label
-              class="flex cursor-pointer items-center gap-3 rounded-xl bg-muted/60 p-3 transition hover:bg-muted has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+              class="flex cursor-pointer items-center gap-3 rounded-xl bg-[#f3f3f3] p-3 transition hover:bg-[#ececec] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-black/30"
               :class="{ 'cursor-not-allowed opacity-50': isLocked(badge.id) }"
             >
               <input
@@ -143,11 +143,11 @@ function onKeydown(event: KeyboardEvent): void {
               <BadgeIcon :icone="badge.icone" />
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium">{{ badge.nome }}</span>
-                <span class="block truncate text-xs text-muted-foreground">{{ badge.descricao }}</span>
+                <span class="block truncate text-xs text-neutral-400">{{ badge.descricao }}</span>
               </span>
               <span
                 class="flex size-5 shrink-0 items-center justify-center rounded-md border"
-                :class="isSelected(badge.id) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'"
+                :class="isSelected(badge.id) ? 'border-black bg-black text-white' : 'border-neutral-300 bg-white'"
                 aria-hidden="true"
               >
                 <Check v-if="isSelected(badge.id)" class="size-3.5" />
@@ -159,14 +159,14 @@ function onKeydown(event: KeyboardEvent): void {
         <footer class="flex justify-end gap-2 p-5 pt-3">
           <button
             type="button"
-            class="h-10 rounded-full bg-muted px-5 text-sm font-medium transition hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="h-10 rounded-full bg-[#ebebeb] px-5 text-sm font-medium text-neutral-900 transition hover:bg-[#e2e2e2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
             @click="close"
           >
             Cancelar
           </button>
           <button
             type="button"
-            class="h-10 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            class="h-10 rounded-full bg-black px-5 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2"
             @click="apply"
           >
             Aplicar
