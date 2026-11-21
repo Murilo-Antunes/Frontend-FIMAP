@@ -8,13 +8,15 @@ import BadgeCard from '../components/BadgeCard.vue'
 import PostCard from '@/features/community/components/PostCard.vue'
 import {
   buscarBadgesUsuario,
+  buscarIdsBadgesDestaque,
   buscarPerfilPorId,
   buscarTodasBadges,
   listarComentariosPorUsuario,
   listarPostsInativos,
   listarPostsPorUsuario,
+  listarPostsSalvos,
 } from '../services/profile.service'
-import type { AbaPerfil, Badge, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
+import type { AbaPerfil, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
 
 const router = useRouter()
@@ -23,21 +25,25 @@ const idUsuario = computed(() => auth.usuario?.id ?? 0)
 
 const perfil = ref<PerfilUsuario | null>(null)
 const minhasBadges = ref<BadgeUsuario[]>([])
+const idsDestaque = ref<number[]>([])
 const totalBadgesDisponiveis = ref(0)
 const carregandoPerfil = ref(true)
+const erroPerfil = ref<string | null>(null)
 
 const abaAtiva = ref<AbaPerfil>('publicacoes')
 const posts = ref<Post[]>([])
 const arquivados = ref<Post[]>([])
+const salvos = ref<Post[]>([])
 const respostas = ref<Awaited<ReturnType<typeof listarComentariosPorUsuario>>['comentarios']>([])
 const totalRespostas = ref(0)
 const carregandoAba = ref(false)
+const erroAba = ref<string | null>(null)
 
-// Badges em destaque: usa as marcadas com em_destaque; se nada vier marcado
-// (⚠️ ver TODO no service sobre esse campo), cai nas 3 mais recentes como fallback.
 const badgesDestaque = computed<BadgeUsuario[]>(() => {
-  const marcadas = minhasBadges.value.filter((b) => b.em_destaque)
-  return (marcadas.length ? marcadas : minhasBadges.value).slice(0, 3)
+  if (idsDestaque.value.length) {
+    return minhasBadges.value.filter((b) => idsDestaque.value.includes(b.id))
+  }
+  return minhasBadges.value.slice(0, 3)
 })
 
 const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.value)
@@ -45,15 +51,27 @@ const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.va
 async function carregarPerfil() {
   if (!idUsuario.value) return
   carregandoPerfil.value = true
+  erroPerfil.value = null
   try {
-    const [dadosPerfil, badgesUsuario, todasBadges] = await Promise.all([
+    const [dadosPerfil, badgesUsuario, todasBadges, destaques] = await Promise.all([
       buscarPerfilPorId(idUsuario.value),
       buscarBadgesUsuario(idUsuario.value),
       buscarTodasBadges(),
+      buscarIdsBadgesDestaque(idUsuario.value),
     ])
+
+    if (!dadosPerfil?.id) {
+      erroPerfil.value = 'Não foi possível carregar seu perfil agora.'
+      return
+    }
+
     perfil.value = dadosPerfil
-    minhasBadges.value = badgesUsuario
-    totalBadgesDisponiveis.value = todasBadges.length
+    minhasBadges.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
+    totalBadgesDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
+    idsDestaque.value = Array.isArray(destaques) ? destaques : []
+  } catch (e) {
+    console.error('Erro ao carregar perfil:', e)
+    erroPerfil.value = 'Não foi possível carregar seu perfil agora. Tente novamente em instantes.'
   } finally {
     carregandoPerfil.value = false
   }
@@ -62,17 +80,25 @@ async function carregarPerfil() {
 async function carregarAba(aba: AbaPerfil) {
   if (!idUsuario.value) return
   carregandoAba.value = true
+  erroAba.value = null
   try {
     if (aba === 'publicacoes') {
-      posts.value = await listarPostsPorUsuario(idUsuario.value)
+      const resultado = await listarPostsPorUsuario(idUsuario.value)
+      posts.value = Array.isArray(resultado) ? resultado : []
     } else if (aba === 'respostas') {
       const resultado = await listarComentariosPorUsuario(idUsuario.value)
-      respostas.value = resultado.comentarios
-      totalRespostas.value = resultado.quantidade
+      respostas.value = Array.isArray(resultado?.comentarios) ? resultado.comentarios : []
+      totalRespostas.value = Number(resultado?.quantidade ?? 0)
+    } else if (aba === 'salvos') {
+      const resultado = await listarPostsSalvos(idUsuario.value)
+      salvos.value = Array.isArray(resultado) ? resultado : []
     } else if (aba === 'arquivados') {
-      arquivados.value = await listarPostsInativos(idUsuario.value)
+      const resultado = await listarPostsInativos(idUsuario.value)
+      arquivados.value = Array.isArray(resultado) ? resultado : []
     }
-    // 'salvos': sem rota no backend ainda — ver aviso na própria aba.
+  } catch (e) {
+    console.error(`Erro ao carregar aba "${aba}":`, e)
+    erroAba.value = 'Não foi possível carregar essa aba agora.'
   } finally {
     carregandoAba.value = false
   }
@@ -80,7 +106,7 @@ async function carregarAba(aba: AbaPerfil) {
 
 function selecionarAba(aba: AbaPerfil) {
   abaAtiva.value = aba
-  if (aba !== 'salvos') carregarAba(aba)
+  carregarAba(aba)
 }
 
 function abrirEdicao() {
@@ -90,7 +116,7 @@ function abrirEdicao() {
 
 onMounted(async () => {
   await carregarPerfil()
-  await carregarAba('publicacoes')
+  if (perfil.value) await carregarAba('publicacoes')
 })
 </script>
 
@@ -117,7 +143,7 @@ onMounted(async () => {
         >
           <Share2 :size="18" />
         </button>
-        <!-- ⚠️ Ainda sem tela de destino — você disse que vai mandar a referência. -->
+        <!-- ⚠️ Ainda sem tela de destino. -->
         <button
           type="button"
           class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
@@ -130,6 +156,13 @@ onMounted(async () => {
 
     <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-muted-foreground">
       Carregando perfil…
+    </div>
+
+    <div v-else-if="erroPerfil" class="flex flex-col items-center gap-3 py-20 text-center">
+      <p class="text-sm text-muted-foreground">{{ erroPerfil }}</p>
+      <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium" @click="carregarPerfil">
+        Tentar novamente
+      </button>
     </div>
 
     <div v-else-if="perfil" class="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
@@ -177,13 +210,20 @@ onMounted(async () => {
             >
               <template v-if="aba === 'publicacoes'">Publicações ({{ posts.length }})</template>
               <template v-else-if="aba === 'respostas'">Respostas ({{ totalRespostas }})</template>
-              <template v-else-if="aba === 'salvos'">Salvos</template>
+              <template v-else-if="aba === 'salvos'">Salvos ({{ salvos.length }})</template>
               <template v-else>Arquivados ({{ arquivados.length }})</template>
             </button>
           </div>
 
           <div v-if="carregandoAba" class="py-10 text-center text-sm text-muted-foreground">
             Carregando…
+          </div>
+
+          <div v-else-if="erroAba" class="flex flex-col items-center gap-3 py-10 text-center">
+            <p class="text-sm text-muted-foreground">{{ erroAba }}</p>
+            <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium" @click="carregarAba(abaAtiva)">
+              Tentar novamente
+            </button>
           </div>
 
           <div v-else-if="abaAtiva === 'publicacoes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -206,9 +246,11 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div v-else-if="abaAtiva === 'salvos'" class="mt-4 rounded-2xl bg-neutral-50 p-6 text-center text-sm text-muted-foreground">
-            ⚠️ A funcionalidade de salvar publicações ainda não existe no backend
-            (precisa de uma tabela/rota equivalente a "tbl_post_salvo").
+          <div v-else-if="abaAtiva === 'salvos'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <PostCard v-for="post in salvos" :key="post.id" :post="post" />
+            <p v-if="!salvos.length" class="col-span-full text-sm text-muted-foreground">
+              Nenhuma publicação salva ainda.
+            </p>
           </div>
 
           <div v-else class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

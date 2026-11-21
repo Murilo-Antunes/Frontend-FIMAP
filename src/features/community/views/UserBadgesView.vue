@@ -6,35 +6,50 @@ import UserAvatar from '@/features/community/components/UserAvatar.vue'
 import BadgeCard from '../components/BadgeCard.vue'
 import { buscarBadgesUsuario, buscarPerfilPorUsername, buscarTodasBadges } from '../services/profile.service'
 import type { BadgeUsuario, PerfilUsuario } from '../types/profile.types'
-import { percentualNivel, tituloNivel, xpParaProximoNivel } from '../utils/nivel'
+import { percentualNivel, tituloNivel, useNiveis, xpParaProximoNivel } from '../utils/nivel'
+import { formatarDataSegura } from '../utils/format-safe'
 
 const route = useRoute()
 const router = useRouter()
+const { niveis, carregarNiveis } = useNiveis()
 
 const perfil = ref<PerfilUsuario | null>(null)
 const badges = ref<BadgeUsuario[]>([])
 const totalDisponiveis = ref(0)
 const carregando = ref(true)
+const erro = ref<string | null>(null)
 const filtroAtivo = ref('todas')
 
-const nome = computed(() => perfil.value?.nome_exibicao || perfil.value?.nome || '')
+const nome = computed(() => perfil.value?.nome_exibicao || perfil.value?.nome || 'Usuário')
 
-// ⚠️ Mesma ressalva da tela de coleção própria: sem coluna "categoria" em
-// tbl_badge não dá pra segmentar de verdade — os chips abaixo são só visuais.
 const categorias = computed(() => [{ id: 'todas', label: `Todas (${totalDisponiveis.value})` }])
+
+const proximaXp = computed(() =>
+  perfil.value ? xpParaProximoNivel(niveis.value, perfil.value.nivel_total ?? 1) : 0,
+)
 
 async function carregar(username: string) {
   carregando.value = true
+  erro.value = null
   try {
-    const dadosPerfil = await buscarPerfilPorUsername(username)
+    const [dadosPerfil] = await Promise.all([buscarPerfilPorUsername(username), carregarNiveis()])
+
+    if (!dadosPerfil?.id) {
+      erro.value = 'Usuário não encontrado.'
+      return
+    }
+
     perfil.value = dadosPerfil
 
     const [badgesUsuario, todasBadges] = await Promise.all([
       buscarBadgesUsuario(dadosPerfil.id),
       buscarTodasBadges(),
     ])
-    badges.value = badgesUsuario
-    totalDisponiveis.value = todasBadges.length
+    badges.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
+    totalDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
+  } catch (e) {
+    console.error('Erro ao carregar badges do usuário:', e)
+    erro.value = 'Não foi possível carregar essas badges agora. Tente novamente em instantes.'
   } finally {
     carregando.value = false
   }
@@ -64,12 +79,23 @@ watch(
       </button>
     </div>
 
-    <h1 class="text-lg font-semibold text-foreground">Conquistas</h1>
-    <p class="text-sm text-muted-foreground">@{{ perfil?.username_social }}</p>
-
     <div v-if="carregando" class="py-20 text-center text-sm text-muted-foreground">Carregando…</div>
 
+    <div v-else-if="erro" class="flex flex-col items-center gap-3 py-20 text-center">
+      <p class="text-sm text-muted-foreground">{{ erro }}</p>
+      <button
+        type="button"
+        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium"
+        @click="carregar(route.params.username as string)"
+      >
+        Tentar novamente
+      </button>
+    </div>
+
     <template v-else-if="perfil">
+      <h1 class="text-lg font-semibold text-foreground">Conquistas</h1>
+      <p class="text-sm text-muted-foreground">@{{ perfil.username_social ?? '—' }}</p>
+
       <div class="mt-4 rounded-2xl bg-foreground p-6 text-background">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
@@ -82,7 +108,7 @@ watch(
                 </span>
               </p>
               <p class="text-sm text-background/70">
-                Nível {{ perfil.nivel_total }} · {{ tituloNivel(perfil.nivel_total) }}
+                Nível {{ perfil.nivel_total ?? '—' }} · {{ tituloNivel(niveis, perfil.nivel_total ?? 1) }}
               </p>
             </div>
           </div>
@@ -97,18 +123,19 @@ watch(
         <div class="mt-5 rounded-xl bg-background/10 p-4">
           <div class="flex items-center justify-between text-xs text-background/70">
             <span>🚩 REPUTAÇÃO COMUNITÁRIA</span>
-            <span class="font-semibold text-background">{{ perfil.xp_usuario }} XP</span>
+            <span class="font-semibold text-background">{{ perfil.xp_usuario ?? 0 }} XP</span>
           </div>
           <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background/20">
             <div
               class="h-full rounded-full bg-background"
-              :style="{ width: `${percentualNivel(perfil.xp_usuario, perfil.nivel_total)}%` }"
+              :style="{ width: `${percentualNivel(perfil.xp_usuario ?? 0, niveis, perfil.nivel_total ?? 1)}%` }"
             />
           </div>
-          <p class="mt-1 text-xs text-background/60">
-            Rumo a Nível {{ perfil.nivel_total + 1 }} · {{ tituloNivel(perfil.nivel_total + 1) }}
-            ({{ xpParaProximoNivel(perfil.nivel_total) }} XP)
+          <p v-if="Number.isFinite(proximaXp)" class="mt-1 text-xs text-background/60">
+            Rumo a Nível {{ (perfil.nivel_total ?? 1) + 1 }} · {{ tituloNivel(niveis, (perfil.nivel_total ?? 1) + 1) }}
+            ({{ proximaXp }} XP)
           </p>
+          <p v-else class="mt-1 text-xs text-background/60">Nível máximo atingido 🎉</p>
         </div>
       </div>
 
@@ -125,14 +152,12 @@ watch(
         </button>
       </div>
 
-      <!-- Só badges conquistadas: para outro usuário não faz sentido mostrar
-           progresso de badges bloqueadas (nem o backend calcula isso hoje). -->
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <BadgeCard
           v-for="badge in badges"
           :key="badge.id"
           :badge="badge"
-          :footer-left="`Desbloqueada em ${new Date(badge.data_conquista).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}`"
+          :footer-left="`Desbloqueada em ${formatarDataSegura(badge.data_conquista, { month: 'short', year: 'numeric' })}`"
         />
         <p v-if="!badges.length" class="col-span-full text-sm text-muted-foreground">
           Ainda sem badges conquistadas.

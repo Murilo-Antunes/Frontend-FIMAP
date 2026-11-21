@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { UserPlus, UserCheck } from 'lucide-vue-next'
 import UserAvatar from '@/features/community/components/UserAvatar.vue'
 import type { PerfilUsuario } from '../types/profile.types'
-import { tituloNivel } from '../utils/nivel'
+import { tituloNivel, useNiveis } from '../utils/nivel'
+import { formatarDataSegura, numeroSeguro } from '../utils/format-safe'
 
 const props = defineProps<{
   perfil: PerfilUsuario
@@ -18,22 +19,24 @@ const emit = defineEmits<{
   seguir: []
 }>()
 
-const nome = computed(() => props.perfil.nome_exibicao || props.perfil.nome)
+const { niveis, carregarNiveis } = useNiveis()
+onMounted(carregarNiveis)
+
+const nome = computed(() => props.perfil.nome_exibicao || props.perfil.nome || 'Usuário')
 const handle = computed(() => (props.perfil.username_social ? `@${props.perfil.username_social}` : ''))
 
-// ⚠️ "Membro desde" depende de uma data de cadastro que não existe em
-// tbl_usuario hoje (ver types/profile.types.ts). Só renderiza se vier.
-const membroDesde = computed(() => {
-  if (!props.perfil.data_entrada) return null
-  return new Date(props.perfil.data_entrada).toLocaleDateString('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  })
-})
+// Se a API não mandar data_cadastro (ou mandar algo inválido), mostra "—"
+// em vez de "Invalid Date".
+const membroDesde = computed(() => formatarDataSegura(props.perfil.data_cadastro))
+
+const tituloNivelAtual = computed(() => tituloNivel(niveis.value, props.perfil.nivel_total ?? 1))
 
 const postsMaisRespostas = computed(
   () => (props.perfil as any).total_posts_respostas ?? undefined,
 )
+
+const totalSeguidores = computed(() => numeroSeguro(props.perfil.total_seguidores))
+const totalSeguindo = computed(() => numeroSeguro(props.perfil.total_seguindo))
 </script>
 
 <template>
@@ -44,14 +47,13 @@ const postsMaisRespostas = computed(
         v-if="mode === 'public'"
         class="flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-700"
       >
-        🏆 Nível {{ perfil.nivel_total }} · {{ tituloNivel(perfil.nivel_total) }}
+        🏆 Nível {{ perfil.nivel_total ?? '—' }} · {{ tituloNivelAtual }}
       </span>
     </div>
 
     <div>
       <div class="flex items-center gap-2">
         <h1 class="text-lg font-semibold text-foreground">{{ nome }}</h1>
-        <!-- ⚠️ "plano" não existe hoje em tbl_usuario; confirme a origem do selo PRO -->
         <span
           v-if="perfil.plano === 'PRO'"
           class="rounded-md bg-foreground px-1.5 py-0.5 text-[10px] font-bold text-background"
@@ -62,7 +64,7 @@ const postsMaisRespostas = computed(
       <p v-if="handle" class="text-sm text-muted-foreground">{{ handle }}</p>
 
       <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span v-if="membroDesde">Membro desde {{ membroDesde }}</span>
+        <span>Membro desde {{ membroDesde }}</span>
         <span v-if="perfil.localizacao_estado">{{ perfil.localizacao_estado }}</span>
       </div>
     </div>
@@ -79,11 +81,11 @@ const postsMaisRespostas = computed(
         <p class="text-xs text-muted-foreground">Posts &amp; Resp.</p>
       </div>
       <div>
-        <p class="text-base font-semibold tabular-nums text-foreground">{{ perfil.total_seguidores }}</p>
+        <p class="text-base font-semibold tabular-nums text-foreground">{{ totalSeguidores }}</p>
         <p class="text-xs text-muted-foreground">Seguidores</p>
       </div>
       <div>
-        <p class="text-base font-semibold tabular-nums text-foreground">{{ perfil.total_seguindo }}</p>
+        <p class="text-base font-semibold tabular-nums text-foreground">{{ totalSeguindo }}</p>
         <p class="text-xs text-muted-foreground">Seguindo</p>
       </div>
     </div>

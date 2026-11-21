@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, MoreHorizontal, Share2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
@@ -27,6 +27,7 @@ const perfil = ref<PerfilUsuario | null>(null)
 const badges = ref<BadgeUsuario[]>([])
 const totalBadgesDisponiveis = ref(0)
 const carregandoPerfil = ref(true)
+const erro = ref<string | null>(null)
 
 const seguindo = ref(false)
 const seguindoBusy = ref(false)
@@ -40,8 +41,14 @@ const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.va
 
 async function carregar(username: string) {
   carregandoPerfil.value = true
+  erro.value = null
   try {
     const dadosPerfil = await buscarPerfilPorUsername(username)
+
+    if (!dadosPerfil?.id) {
+      erro.value = 'Usuário não encontrado.'
+      return
+    }
 
     // Se o usuário clicar no próprio avatar em algum lugar, manda pro perfil próprio.
     if (dadosPerfil.id === auth.usuario?.id) {
@@ -56,15 +63,19 @@ async function carregar(username: string) {
       buscarTodasBadges(),
       listarComentariosPorUsuario(dadosPerfil.id),
     ])
-    badges.value = badgesUsuario
-    totalBadgesDisponiveis.value = todasBadges.length
-    totalRespostas.value = resultadoRespostas.quantidade
+    badges.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
+    totalBadgesDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
+    totalRespostas.value = Number(resultadoRespostas?.quantidade ?? 0)
 
-    posts.value = await listarPostsPorUsuario(dadosPerfil.id)
+    const resultadoPosts = await listarPostsPorUsuario(dadosPerfil.id)
+    posts.value = Array.isArray(resultadoPosts) ? resultadoPosts : []
 
     if (auth.usuario?.id) {
       seguindo.value = await jaSegue(auth.usuario.id, dadosPerfil.id)
     }
+  } catch (e) {
+    console.error('Erro ao carregar perfil público:', e)
+    erro.value = 'Não foi possível carregar esse perfil agora. Tente novamente em instantes.'
   } finally {
     carregandoPerfil.value = false
   }
@@ -112,8 +123,6 @@ watch(
         <button type="button" class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100" aria-label="Compartilhar perfil">
           <Share2 :size="18" />
         </button>
-        <!-- ⚠️ Ação de denúncia/bloqueio: tbl_denuncia existe no banco, mas não há rota de post
-             exposta pra isso nas rotas que você mandou — precisa confirmar o endpoint. -->
         <button type="button" class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100" aria-label="Mais opções">
           <MoreHorizontal :size="18" />
         </button>
@@ -122,6 +131,17 @@ watch(
 
     <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-muted-foreground">
       Carregando perfil…
+    </div>
+
+    <div v-else-if="erro" class="flex flex-col items-center gap-3 py-20 text-center">
+      <p class="text-sm text-muted-foreground">{{ erro }}</p>
+      <button
+        type="button"
+        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium"
+        @click="carregar(route.params.username as string)"
+      >
+        Tentar novamente
+      </button>
     </div>
 
     <div v-else-if="perfil" class="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
@@ -181,9 +201,6 @@ watch(
               Nenhuma publicação ainda.
             </p>
           </div>
-
-          <!-- Lista detalhada de respostas de outro usuário fica igual à aba "Respostas" do
-               perfil próprio — reaproveite o mesmo bloco se preferir extrair um componente. -->
         </section>
       </div>
     </div>
