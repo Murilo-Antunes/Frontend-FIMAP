@@ -18,7 +18,7 @@ export const communityRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/comunidade/perfil',
-    name: 'community-profile',
+    name: 'community-profile-edit',
     component: () => import('@/features/community/views/SocialProfileEditView.vue'),
     meta: { showBack: true },
   },
@@ -27,6 +27,14 @@ export const communityRoutes: RouteRecordRaw[] = [
     name: 'community-post',
     component: () => import('@/features/community/views/CommunityPostView.vue'),
     props: (route) => ({ postId: Number(route.params.id) }),
+    meta: { requiresSocialProfile: true, showBack: true },
+  },
+  {
+    // Mesma tela para denunciar post e perfil: o `tipo` na URL decide a rota do backend.
+    path: '/comunidade/denunciar/:tipo(post|perfil)/:id(\\d+)',
+    name: 'community-report',
+    component: () => import('@/features/community/views/CommunityReportView.vue'),
+    props: (route) => ({ tipo: route.params.tipo as 'post' | 'perfil', id: Number(route.params.id) }),
     meta: { requiresSocialProfile: true, showBack: true },
   },
 ]

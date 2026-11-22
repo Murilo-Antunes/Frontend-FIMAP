@@ -2,13 +2,14 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { isCancel } from 'axios'
 import { refDebounced } from '@vueuse/core'
-import { Loader2, Newspaper, RefreshCw, Search, AlertCircle } from 'lucide-vue-next'
+import { Loader2, Newspaper, RefreshCw, Search, AlertCircle, SquarePen } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import { postService } from '../services/post.service'
 import type { FeedOrdem, Post } from '../types/community.types'
 import PostCard from '../components/PostCard.vue'
 import PostCardSkeleton from '../components/PostCardSkeleton.vue'
+import NewPostDialog from '../components/NewPostDialog.vue'
 import { ui } from '../ui'
 
 const PAGE_SIZE = 12
@@ -26,6 +27,7 @@ const loadMoreError = ref('')
 const search = ref('')
 const debouncedSearch = refDebounced(search, 400)
 const ordem = ref<FeedOrdem>('recentes')
+const newPostOpen = ref(false)
 
 let controller: AbortController | null = null
 
@@ -77,6 +79,17 @@ async function load(reset: boolean): Promise<void> {
   } finally {
     if (!reset) loadingMore.value = false
   }
+}
+
+/** Post recém-criado entra no topo do feed (sem recarregar). */
+function onPostCreated(post: Post): void {
+  if (status.value !== 'ready') status.value = 'ready'
+  if (ordem.value === 'recentes' && !isSearching.value) {
+    posts.value = mergeUnique([post], posts.value)
+  } else {
+    posts.value = mergeUnique(posts.value, [post])
+  }
+  total.value += 1
 }
 
 watch([debouncedSearch, ordem], () => void load(true), { immediate: true })
@@ -162,6 +175,16 @@ onBeforeUnmount(() => controller?.abort())
           <p v-else class="text-xs text-neutral-400">Você chegou ao fim do feed.</p>
         </div>
       </template>
+
+      <!-- Novo post -->
+      <div class="pointer-events-none sticky bottom-6 z-10 mt-6 flex justify-end">
+        <button type="button" :class="[ui.btnBlack, 'pointer-events-auto h-11 px-6 shadow-lg']" @click="newPostOpen = true">
+          <SquarePen class="size-4" aria-hidden="true" />
+          Novo Post
+        </button>
+      </div>
     </section>
+
+    <NewPostDialog v-model:open="newPostOpen" @created="onPostCreated" />
   </div>
 </template>

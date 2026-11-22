@@ -10,7 +10,7 @@ import type { Post } from '@/features/community/types/community.types'
 const BASE_USUARIO = '/v1/openfinance/usuario'
 const BASE_BADGES = '/v1/comunidade/badge'
 const BASE_POSTS = '/v1/comunidade/posts'
-const BASE_COMENTARIOS = '/v1/comunidade/comentarios'
+const BASE_COMENTARIOS = '/v1/comunidade/posts/comentario'
 const BASE_SEGUIR = '/v1/comunidade/seguir'
 const BASE_COMUNIDADE = '/v1/comunidade' // onde você montou nivelRoutes
 
@@ -22,7 +22,7 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
 }
 
 export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
-  const { data } = await http.get(`${BASE_USUARIO}/social/username-disponivel/${usernameSocial}`)
+  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`)
   return data.usuario ?? data
 }
 

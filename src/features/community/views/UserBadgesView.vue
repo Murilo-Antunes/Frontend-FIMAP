@@ -69,7 +69,7 @@ watch(
     <div class="mb-4 flex items-center justify-between">
       <button
         type="button"
-        class="flex items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition hover:bg-neutral-100"
+        class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
         @click="router.back()"
       >
         <ArrowLeft :size="18" />
@@ -79,13 +79,13 @@ watch(
       </button>
     </div>
 
-    <div v-if="carregando" class="py-20 text-center text-sm text-muted-foreground">Carregando…</div>
+    <div v-if="carregando" class="py-20 text-center text-sm text-neutral-500">Carregando…</div>
 
     <div v-else-if="erro" class="flex flex-col items-center gap-3 py-20 text-center">
-      <p class="text-sm text-muted-foreground">{{ erro }}</p>
+      <p class="text-sm text-neutral-500">{{ erro }}</p>
       <button
         type="button"
-        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium"
+        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200"
         @click="carregar(route.params.username as string)"
       >
         Tentar novamente
@@ -93,49 +93,50 @@ watch(
     </div>
 
     <template v-else-if="perfil">
-      <h1 class="text-lg font-semibold text-foreground">Conquistas</h1>
-      <p class="text-sm text-muted-foreground">@{{ perfil.username_social ?? '—' }}</p>
+      <h1 class="text-lg font-semibold text-neutral-900">Conquistas</h1>
+      <p class="text-sm text-neutral-500">@{{ perfil.username_social ?? '—' }}</p>
 
-      <div class="mt-4 rounded-2xl bg-foreground p-6 text-background">
+      <!-- Card preto literal (bg-black), consistente com o resto do app. -->
+      <div class="mt-4 rounded-2xl bg-black p-6 text-white">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
             <UserAvatar :src="perfil.foto_perfil" :name="nome" size="lg" />
             <div>
               <p class="flex items-center gap-2 font-semibold">
                 {{ nome }}
-                <span v-if="perfil.plano === 'PRO'" class="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-bold text-foreground">
+                <span v-if="perfil.plano === 'PRO'" class="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-black">
                   PRO
                 </span>
               </p>
-              <p class="text-sm text-background/70">
+              <p class="text-sm text-white/70">
                 Nível {{ perfil.nivel_total ?? '—' }} · {{ tituloNivel(niveis, perfil.nivel_total ?? 1) }}
               </p>
             </div>
           </div>
           <div class="text-right">
             <p class="text-2xl font-semibold leading-none">
-              {{ badges.length }}<span class="text-base text-background/60">/{{ totalDisponiveis }}</span>
+              {{ badges.length }}<span class="text-base text-white/60">/{{ totalDisponiveis }}</span>
             </p>
-            <p class="text-xs text-background/60">Badges Ativas</p>
+            <p class="text-xs text-white/60">Badges Ativas</p>
           </div>
         </div>
 
-        <div class="mt-5 rounded-xl bg-background/10 p-4">
-          <div class="flex items-center justify-between text-xs text-background/70">
+        <div class="mt-5 rounded-xl bg-white/10 p-4">
+          <div class="flex items-center justify-between text-xs text-white/70">
             <span>🚩 REPUTAÇÃO COMUNITÁRIA</span>
-            <span class="font-semibold text-background">{{ perfil.xp_usuario ?? 0 }} XP</span>
+            <span class="font-semibold text-white">{{ perfil.xp_usuario ?? 0 }} XP</span>
           </div>
-          <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background/20">
+          <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
             <div
-              class="h-full rounded-full bg-background"
+              class="h-full rounded-full bg-white"
               :style="{ width: `${percentualNivel(perfil.xp_usuario ?? 0, niveis, perfil.nivel_total ?? 1)}%` }"
             />
           </div>
-          <p v-if="Number.isFinite(proximaXp)" class="mt-1 text-xs text-background/60">
+          <p v-if="Number.isFinite(proximaXp)" class="mt-1 text-xs text-white/60">
             Rumo a Nível {{ (perfil.nivel_total ?? 1) + 1 }} · {{ tituloNivel(niveis, (perfil.nivel_total ?? 1) + 1) }}
             ({{ proximaXp }} XP)
           </p>
-          <p v-else class="mt-1 text-xs text-background/60">Nível máximo atingido 🎉</p>
+          <p v-else class="mt-1 text-xs text-white/60">Nível máximo atingido 🎉</p>
         </div>
       </div>
 
@@ -145,7 +146,7 @@ watch(
           :key="cat.id"
           type="button"
           class="whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition"
-          :class="filtroAtivo === cat.id ? 'bg-foreground text-background' : 'bg-neutral-100 text-muted-foreground'"
+          :class="filtroAtivo === cat.id ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'"
           @click="filtroAtivo = cat.id"
         >
           {{ cat.label }}
@@ -159,7 +160,7 @@ watch(
           :badge="badge"
           :footer-left="`Desbloqueada em ${formatarDataSegura(badge.data_conquista, { month: 'short', year: 'numeric' })}`"
         />
-        <p v-if="!badges.length" class="col-span-full text-sm text-muted-foreground">
+        <p v-if="!badges.length" class="col-span-full text-sm text-neutral-500">
           Ainda sem badges conquistadas.
         </p>
       </div>

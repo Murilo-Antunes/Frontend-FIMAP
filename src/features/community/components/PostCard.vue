@@ -8,6 +8,7 @@ import type { Post } from '../types/community.types'
 import { ui } from '../ui'
 import { authorHandle, authorName, formatFullDate, formatRelativeShort, splitContent } from '../utils/format'
 import LikeButton from './LikeButton.vue'
+import PostActionsMenu from './PostActionsMenu.vue'
 import PostMedia from './PostMedia.vue'
 import UserAvatar from './UserAvatar.vue'
 
@@ -19,6 +20,8 @@ const router = useRouter()
 const parts = computed(() => splitContent(props.post.conteudo))
 const name = computed(() => authorName(props.post.autor))
 const handle = computed(() => authorHandle(props.post.autor))
+/** Não se denuncia o próprio post (o backend recusa com DENUNCIA_PROPRIO_POST). */
+const isOwn = computed(() => Number(props.post.id_usuario) === auth.usuario?.id)
 
 const liked = ref(props.post.curtiu)
 const likes = ref(props.post.total_curtidas)
@@ -69,11 +72,16 @@ async function toggleLike(): Promise<void> {
     @click="openPost"
   >
     <header class="flex items-center gap-3">
-      <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+      <RouterLink
+        :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+        class="flex items-center gap-3"
+      >
+        <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+      </RouterLink>
       <div class="min-w-0">
         <RouterLink
-          :to="{ name: 'community-post', params: { id: post.id } }"
-          class="block truncate text-sm font-semibold leading-tight text-neutral-900 outline-none focus-visible:underline"
+          :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+          class="block truncate text-sm font-semibold leading-tight text-neutral-900 outline-none hover:underline focus-visible:underline"
         >
           {{ name }}
         </RouterLink>
@@ -84,6 +92,7 @@ async function toggleLike(): Promise<void> {
           </time>
         </p>
       </div>
+      <PostActionsMenu v-if="!isOwn" :post-id="post.id" class="ml-auto" />
     </header>
 
     <p

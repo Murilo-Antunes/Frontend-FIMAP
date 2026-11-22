@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { commentService } from '../services/comment.service'
 import type { Comentario } from '../types/community.types'
@@ -51,9 +52,19 @@ async function toggleLike(): Promise<void> {
     :class="isRoot ? [ui.card, 'mb-4 break-inside-avoid p-4'] : 'rounded-lg bg-[#f7f7f7] p-3'"
   >
     <div class="flex items-center gap-2.5">
-      <UserAvatar :src="comment.autor.foto_perfil" :name="name" size="sm" />
+      <RouterLink
+        :to="{ name: 'community-public-profile', params: { username: comment.autor.username_social } }"
+        class="flex items-center"
+      >
+        <UserAvatar :src="comment.autor.foto_perfil" :name="name" size="sm" />
+      </RouterLink>
       <div class="min-w-0">
-        <p class="truncate text-[13px] font-semibold leading-tight text-neutral-900">{{ name }}</p>
+        <RouterLink
+          :to="{ name: 'community-public-profile', params: { username: comment.autor.username_social } }"
+          class="block truncate text-[13px] font-semibold leading-tight text-neutral-900 outline-none focus-visible:underline"
+        >
+          {{ name }}
+        </RouterLink>
         <p class="truncate text-[11px] text-neutral-400">
           <span v-if="handle">{{ handle }} · </span>
           <time :datetime="comment.data_criacao" :title="formatFullDate(comment.data_criacao)">

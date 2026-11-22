@@ -32,12 +32,21 @@ const erro = ref<string | null>(null)
 const seguindo = ref(false)
 const seguindoBusy = ref(false)
 
+const ABAS = [
+  { id: 'publicacoes', label: 'Publicações' },
+  { id: 'respostas', label: 'Respostas' },
+] as const
+
 const abaAtiva = ref<'publicacoes' | 'respostas'>('publicacoes')
 const posts = ref<Post[]>([])
 const totalRespostas = ref(0)
 const carregandoAba = ref(false)
 
 const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.value)
+
+function contagem(aba: 'publicacoes' | 'respostas') {
+  return aba === 'publicacoes' ? posts.value.length : totalRespostas.value
+}
 
 async function carregar(username: string) {
   carregandoPerfil.value = true
@@ -50,7 +59,6 @@ async function carregar(username: string) {
       return
     }
 
-    // Se o usuário clicar no próprio avatar em algum lugar, manda pro perfil próprio.
     if (dadosPerfil.id === auth.usuario?.id) {
       router.replace({ name: 'community-profile' })
       return
@@ -113,13 +121,13 @@ watch(
     <div class="mb-4 flex items-center justify-between">
       <button
         type="button"
-        class="flex items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition hover:bg-neutral-100"
+        class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
         @click="router.back()"
       >
         <ArrowLeft :size="18" />
       </button>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1">
         <button type="button" class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100" aria-label="Compartilhar perfil">
           <Share2 :size="18" />
         </button>
@@ -129,15 +137,15 @@ watch(
       </div>
     </div>
 
-    <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-muted-foreground">
+    <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-neutral-500">
       Carregando perfil…
     </div>
 
     <div v-else-if="erro" class="flex flex-col items-center gap-3 py-20 text-center">
-      <p class="text-sm text-muted-foreground">{{ erro }}</p>
+      <p class="text-sm text-neutral-500">{{ erro }}</p>
       <button
         type="button"
-        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium"
+        class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200"
         @click="carregar(route.params.username as string)"
       >
         Tentar novamente
@@ -156,10 +164,10 @@ watch(
       <div class="flex flex-col gap-6">
         <section>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-semibold text-foreground">Reputação e Badges</h2>
+            <h2 class="text-base font-semibold text-neutral-900">Reputação e Badges</h2>
             <RouterLink
               :to="{ name: 'community-user-badges', params: { username: route.params.username } }"
-              class="text-sm font-medium text-muted-foreground hover:text-foreground"
+              class="text-sm font-medium text-neutral-500 transition hover:text-neutral-900"
             >
               Ver todas ({{ totalBadgesDisponiveis }})
             </RouterLink>
@@ -168,36 +176,34 @@ watch(
           <div v-if="badges.length" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <BadgeCard v-for="badge in badges.slice(0, 4)" :key="badge.id" :badge="badge" />
           </div>
-          <p v-else class="text-sm text-muted-foreground">Ainda sem badges conquistadas.</p>
+          <p v-else class="text-sm text-neutral-500">Ainda sem badges conquistadas.</p>
         </section>
 
         <section>
-          <div class="flex gap-1 rounded-full bg-neutral-100 p-1 text-sm">
+          <div class="flex items-center gap-6 border-b border-neutral-200 text-sm">
             <button
+              v-for="aba in ABAS"
+              :key="aba.id"
               type="button"
-              class="rounded-full px-3.5 py-1.5 font-medium transition"
-              :class="abaAtiva === 'publicacoes' ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground'"
-              @click="abaAtiva = 'publicacoes'"
+              class="relative -mb-px pb-3 font-medium transition"
+              :class="abaAtiva === aba.id ? 'text-neutral-900' : 'text-neutral-500 hover:text-neutral-900'"
+              @click="abaAtiva = aba.id"
             >
-              Publicações ({{ posts.length }})
-            </button>
-            <button
-              type="button"
-              class="rounded-full px-3.5 py-1.5 font-medium transition"
-              :class="abaAtiva === 'respostas' ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground'"
-              @click="abaAtiva = 'respostas'"
-            >
-              Respostas ({{ totalRespostas }})
+              {{ aba.label }} ({{ contagem(aba.id) }})
+              <span
+                v-if="abaAtiva === aba.id"
+                class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-neutral-900"
+              />
             </button>
           </div>
 
-          <div v-if="carregandoAba" class="py-10 text-center text-sm text-muted-foreground">
+          <div v-if="carregandoAba" class="py-10 text-center text-sm text-neutral-500">
             Carregando…
           </div>
 
           <div v-else-if="abaAtiva === 'publicacoes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <PostCard v-for="post in posts" :key="post.id" :post="post" />
-            <p v-if="!posts.length" class="col-span-full text-sm text-muted-foreground">
+            <p v-if="!posts.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação ainda.
             </p>
           </div>
