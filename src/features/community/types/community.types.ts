@@ -105,3 +105,21 @@ export interface FeedResult {
   pagina: number
   limite: number
 }
+
+/* -------------------------------- Denúncias -------------------------------- */
+
+/** O que está sendo denunciado. A mesma tela atende post e perfil. */
+export type ReportTarget =
+  | { tipo: 'post'; id: number }
+  | { tipo: 'perfil'; id: number }
+
+export interface CategoriaDenuncia {
+  id: number
+  nome: string
+}
+
+export interface ReportPayload {
+  idCategoria: number
+  titulo: string
+  descricao: string
+}

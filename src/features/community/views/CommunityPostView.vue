@@ -12,6 +12,7 @@ import type { Comentario, ComentarioOrdem, Post } from '../types/community.types
 import { authorHandle, authorName, formatFullDate, formatRelativeShort, splitContent, wasEdited } from '../utils/format'
 import CommentCard from '../components/CommentCard.vue'
 import LikeButton from '../components/LikeButton.vue'
+import PostActionsMenu from '../components/PostActionsMenu.vue'
 import PostMedia from '../components/PostMedia.vue'
 import { ui } from '../ui'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -45,6 +46,7 @@ let controller: AbortController | null = null
 const parts = computed(() => (post.value ? splitContent(post.value.conteudo) : { text: '', media: [] }))
 const name = computed(() => authorName(post.value?.autor))
 const handle = computed(() => authorHandle(post.value?.autor))
+const isOwn = computed(() => Number(post.value?.id_usuario) === auth.usuario?.id)
 const edited = computed(() => wasEdited(post.value?.data_criacao, post.value?.data_atualizacao))
 
 function countAll(list: Comentario[]): number {
@@ -253,6 +255,7 @@ onBeforeUnmount(() => controller?.abort())
               <span v-if="edited"> • Editado</span>
             </p>
           </div>
+          <PostActionsMenu v-if="!isOwn" :post-id="post.id" class="ml-auto" />
         </header>
 
         <p v-if="parts.text" class="whitespace-pre-line break-words text-sm leading-relaxed text-neutral-700">
