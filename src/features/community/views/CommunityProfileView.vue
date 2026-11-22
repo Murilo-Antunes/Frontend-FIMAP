@@ -123,11 +123,6 @@ function selecionarAba(aba: AbaPerfil) {
   carregarAba(aba)
 }
 
-function abrirEdicao() {
-  // ⚠️ ajuste o nome da rota conforme a tela de edição que você já criou.
-  router.push({ name: 'community-profile-edit' })
-}
-
 onMounted(async () => {
   await carregarPerfil()
   if (perfil.value) await carregarAba('publicacoes')
@@ -183,7 +178,6 @@ onMounted(async () => {
       <ProfileCard
         :perfil="{ ...perfil, total_posts_respostas: postsMaisRespostas } as any"
         mode="own"
-        @editar="abrirEdicao"
       />
 
       <div class="flex flex-col gap-6">

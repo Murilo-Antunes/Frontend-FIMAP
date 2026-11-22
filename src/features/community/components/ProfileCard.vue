@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import { Calendar, MapPin, UserPlus, UserCheck } from 'lucide-vue-next'
 import UserAvatar from '@/features/community/components/UserAvatar.vue'
 import type { PerfilUsuario } from '../types/profile.types'
@@ -15,7 +16,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  editar: []
   seguir: []
 }>()
 
@@ -93,14 +93,13 @@ const totalSeguindo = computed(() => numeroSeguro(props.perfil.total_seguindo))
       </div>
     </div>
 
-    <button
+    <RouterLink
       v-if="mode === 'own'"
-      type="button"
-      class="w-full rounded-xl bg-black py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-      @click="emit('editar')"
+      :to="{ name: 'community-profile-edit' }"
+      class="block w-full rounded-xl bg-black py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-90"
     >
       Personalizar Perfil
-    </button>
+    </RouterLink>
 
     <button
       v-else

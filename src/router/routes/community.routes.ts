@@ -18,7 +18,7 @@ export const communityRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/comunidade/perfil',
-    name: 'community-profile',
+    name: 'community-profile-edit',
     component: () => import('@/features/community/views/SocialProfileEditView.vue'),
     meta: { showBack: true },
   },

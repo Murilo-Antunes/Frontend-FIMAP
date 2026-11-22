@@ -34,5 +34,5 @@ export async function socialProfileGuard(
 
   if (store.hasSocialProfile()) return true
 
-  return { name: 'community-profile', query: { redirect: to.fullPath } }
+  return { name: 'community-profile-edit', query: { redirect: to.fullPath } }
 }
