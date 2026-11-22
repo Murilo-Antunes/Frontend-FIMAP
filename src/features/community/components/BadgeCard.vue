@@ -6,13 +6,13 @@ import type { Badge } from '../types/profile.types'
 const props = withDefaults(
   defineProps<{
     badge: Badge
-    /** Texto do selo no canto (ex.: "100%", "Rara", "Nível Máx"). */
+    /** Texto do selo no canto (ex.: "100%", "Rara", "Nível Máx", "Em curso"). */
     tag?: string
     /** Texto discreto no rodapé, à esquerda (ex.: "3 conexões ativas" / data). */
     footerLeft?: string
     /** Texto em destaque no rodapé, à direita (ex.: "+150 XP"). */
     footerRight?: string
-    /** Badge ainda não conquistada (mostra cadeado e opacidade reduzida). */
+    /** Badge ainda não conquistada (mostra cadeado no lugar do emoji). */
     locked?: boolean
     /** 0–100, mostra barra de progresso. Só faz sentido com locked. */
     progress?: number
@@ -25,14 +25,15 @@ const props = withDefaults(
 )
 
 const iconBoxClass = computed(() =>
-  props.locked ? 'bg-neutral-100 text-neutral-300' : 'bg-neutral-100 text-foreground',
+  props.locked ? 'bg-neutral-100 text-neutral-400' : 'bg-neutral-100 text-neutral-900',
 )
 </script>
 
 <template>
+  <!-- Sem borda/ring — só sombra, igual à referência. -->
   <div
-    class="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-border/50"
-    :class="[locked ? 'opacity-70' : '', size === 'lg' ? 'min-h-[132px]' : '']"
+    class="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm"
+    :class="size === 'lg' ? 'min-h-[132px]' : ''"
   >
     <div class="flex items-start justify-between gap-2">
       <div
@@ -52,29 +53,29 @@ const iconBoxClass = computed(() =>
       <CheckCircle2
         v-else-if="checked"
         :size="18"
-        class="shrink-0 text-foreground"
+        class="shrink-0 text-neutral-900"
         aria-label="Badge conquistada"
       />
     </div>
 
     <div>
-      <p class="text-sm font-semibold leading-tight text-foreground">{{ badge.nome }}</p>
-      <p class="mt-1 text-xs leading-relaxed text-muted-foreground">{{ badge.descricao }}</p>
+      <p class="text-sm font-semibold leading-tight text-neutral-900">{{ badge.nome }}</p>
+      <p class="mt-1 text-xs leading-relaxed text-neutral-500">{{ badge.descricao }}</p>
     </div>
 
     <div v-if="progress !== undefined" class="space-y-1.5">
       <div class="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
         <div
-          class="h-full rounded-full bg-foreground transition-[width]"
+          class="h-full rounded-full bg-neutral-900 transition-[width]"
           :style="{ width: `${progress}%` }"
         />
       </div>
-      <p class="text-right text-[11px] text-muted-foreground">{{ progress }}%</p>
+      <p class="text-right text-[11px] text-neutral-500">{{ progress }}%</p>
     </div>
 
     <div v-if="footerLeft || footerRight" class="mt-auto flex items-center justify-between gap-2 text-xs">
-      <span class="truncate text-muted-foreground">{{ footerLeft }}</span>
-      <span v-if="footerRight" class="shrink-0 font-semibold text-foreground">{{ footerRight }}</span>
+      <span class="truncate text-neutral-500">{{ footerLeft }}</span>
+      <span v-if="footerRight" class="shrink-0 font-semibold text-neutral-900">{{ footerRight }}</span>
     </div>
   </div>
 </template>

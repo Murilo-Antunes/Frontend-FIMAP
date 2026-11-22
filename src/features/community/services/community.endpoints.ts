@@ -11,6 +11,7 @@ const CURTIDAS = '/v1/comunidade/curtida'
 export const communityEndpoints = {
   /** PROPOSTO: ainda não existe em postRoutes (ver guia, seção 3.1). */
   feed: `${POSTS}/feed`,
+  createPost: `${POSTS}/criar`,
   postById: (idPost: number) => `${POSTS}/buscar/${idPost}`,
 
   togglePostLike: `${CURTIDAS}/alternar-curtida-post`,

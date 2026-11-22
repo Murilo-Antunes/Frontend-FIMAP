@@ -49,4 +49,16 @@ export const postService = {
     )
     return { curtiu: data.curtiu, total_curtidas: data.total_curtidas }
   },
+
+  /**
+   * POST /criar — existente. Body: { id_usuario, conteudo: [{ tipo: 'texto', valor }] }.
+   * Retorna o post criado (com autor/contagens se o backend v-social estiver aplicado).
+   */
+  async create(idUsuario: number, texto: string): Promise<Post> {
+    const { data } = await http.post<{ sucesso: boolean; mensagem: string; post: Partial<Post> & Pick<Post, 'id'> }>(
+      communityEndpoints.createPost,
+      { id_usuario: idUsuario, conteudo: [{ tipo: 'texto', valor: texto }] },
+    )
+    return data.post as Post
+  },
 }

@@ -30,6 +30,13 @@ const totalBadgesDisponiveis = ref(0)
 const carregandoPerfil = ref(true)
 const erroPerfil = ref<string | null>(null)
 
+const ABAS: { id: AbaPerfil; label: string }[] = [
+  { id: 'publicacoes', label: 'Publicações' },
+  { id: 'respostas', label: 'Respostas' },
+  { id: 'salvos', label: 'Salvos' },
+  { id: 'arquivados', label: 'Arquivados' },
+]
+
 const abaAtiva = ref<AbaPerfil>('publicacoes')
 const posts = ref<Post[]>([])
 const arquivados = ref<Post[]>([])
@@ -47,6 +54,13 @@ const badgesDestaque = computed<BadgeUsuario[]>(() => {
 })
 
 const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.value)
+
+function contagem(aba: AbaPerfil) {
+  if (aba === 'publicacoes') return posts.value.length
+  if (aba === 'respostas') return totalRespostas.value
+  if (aba === 'salvos') return salvos.value.length
+  return arquivados.value.length
+}
 
 async function carregarPerfil() {
   if (!idUsuario.value) return
@@ -125,7 +139,7 @@ onMounted(async () => {
     <div class="mb-4 flex items-center justify-between">
       <button
         type="button"
-        class="flex items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition hover:bg-neutral-100"
+        class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
         @click="router.back()"
       >
         <ArrowLeft :size="18" />
@@ -135,7 +149,7 @@ onMounted(async () => {
         COMUNIDADE FIMAP
       </span>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1">
         <button
           type="button"
           class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
@@ -154,13 +168,13 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-muted-foreground">
+    <div v-if="carregandoPerfil" class="py-20 text-center text-sm text-neutral-500">
       Carregando perfil…
     </div>
 
     <div v-else-if="erroPerfil" class="flex flex-col items-center gap-3 py-20 text-center">
-      <p class="text-sm text-muted-foreground">{{ erroPerfil }}</p>
-      <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium" @click="carregarPerfil">
+      <p class="text-sm text-neutral-500">{{ erroPerfil }}</p>
+      <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200" @click="carregarPerfil">
         Tentar novamente
       </button>
     </div>
@@ -175,10 +189,10 @@ onMounted(async () => {
       <div class="flex flex-col gap-6">
         <section>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-semibold text-foreground">Badges em Destaque</h2>
+            <h2 class="text-base font-semibold text-neutral-900">Badges em Destaque</h2>
             <RouterLink
               :to="{ name: 'community-profile-badges' }"
-              class="text-sm font-medium text-muted-foreground hover:text-foreground"
+              class="text-sm font-medium text-neutral-500 transition hover:text-neutral-900"
             >
               Ver todas ({{ totalBadgesDisponiveis }})
             </RouterLink>
@@ -193,42 +207,44 @@ onMounted(async () => {
               checked
             />
           </div>
-          <p v-else class="text-sm text-muted-foreground">
+          <p v-else class="text-sm text-neutral-500">
             Você ainda não conquistou nenhuma badge.
           </p>
         </section>
 
         <section>
-          <div class="flex gap-1 overflow-x-auto rounded-full bg-neutral-100 p-1 text-sm">
+          <!-- Abas em texto simples com sublinhado no ativo — sem "pílula" de fundo. -->
+          <div class="flex items-center gap-6 overflow-x-auto border-b border-neutral-200 text-sm">
             <button
-              v-for="aba in (['publicacoes', 'respostas', 'salvos', 'arquivados'] as AbaPerfil[])"
-              :key="aba"
+              v-for="aba in ABAS"
+              :key="aba.id"
               type="button"
-              class="whitespace-nowrap rounded-full px-3.5 py-1.5 font-medium transition"
-              :class="abaAtiva === aba ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground'"
-              @click="selecionarAba(aba)"
+              class="relative -mb-px whitespace-nowrap pb-3 font-medium transition"
+              :class="abaAtiva === aba.id ? 'text-neutral-900' : 'text-neutral-500 hover:text-neutral-900'"
+              @click="selecionarAba(aba.id)"
             >
-              <template v-if="aba === 'publicacoes'">Publicações ({{ posts.length }})</template>
-              <template v-else-if="aba === 'respostas'">Respostas ({{ totalRespostas }})</template>
-              <template v-else-if="aba === 'salvos'">Salvos ({{ salvos.length }})</template>
-              <template v-else>Arquivados ({{ arquivados.length }})</template>
+              {{ aba.label }} ({{ contagem(aba.id) }})
+              <span
+                v-if="abaAtiva === aba.id"
+                class="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-neutral-900"
+              />
             </button>
           </div>
 
-          <div v-if="carregandoAba" class="py-10 text-center text-sm text-muted-foreground">
+          <div v-if="carregandoAba" class="py-10 text-center text-sm text-neutral-500">
             Carregando…
           </div>
 
           <div v-else-if="erroAba" class="flex flex-col items-center gap-3 py-10 text-center">
-            <p class="text-sm text-muted-foreground">{{ erroAba }}</p>
-            <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium" @click="carregarAba(abaAtiva)">
+            <p class="text-sm text-neutral-500">{{ erroAba }}</p>
+            <button type="button" class="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-200" @click="carregarAba(abaAtiva)">
               Tentar novamente
             </button>
           </div>
 
           <div v-else-if="abaAtiva === 'publicacoes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <PostCard v-for="post in posts" :key="post.id" :post="post" />
-            <p v-if="!posts.length" class="col-span-full text-sm text-muted-foreground">
+            <p v-if="!posts.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação ainda.
             </p>
           </div>
@@ -237,25 +253,25 @@ onMounted(async () => {
             <p
               v-for="resposta in respostas"
               :key="resposta.id"
-              class="rounded-2xl bg-white p-4 text-sm text-foreground/90 ring-1 ring-border/50"
+              class="rounded-2xl bg-white p-4 text-sm text-neutral-800 shadow-sm"
             >
               {{ resposta.mensagem }}
             </p>
-            <p v-if="!respostas.length" class="text-sm text-muted-foreground">
+            <p v-if="!respostas.length" class="text-sm text-neutral-500">
               Nenhuma resposta ainda.
             </p>
           </div>
 
           <div v-else-if="abaAtiva === 'salvos'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <PostCard v-for="post in salvos" :key="post.id" :post="post" />
-            <p v-if="!salvos.length" class="col-span-full text-sm text-muted-foreground">
+            <p v-if="!salvos.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação salva ainda.
             </p>
           </div>
 
           <div v-else class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <PostCard v-for="post in arquivados" :key="post.id" :post="post" />
-            <p v-if="!arquivados.length" class="col-span-full text-sm text-muted-foreground">
+            <p v-if="!arquivados.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação arquivada.
             </p>
           </div>
