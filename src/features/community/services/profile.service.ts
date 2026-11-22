@@ -10,7 +10,7 @@ import type { Post } from '@/features/community/types/community.types'
 const BASE_USUARIO = '/v1/openfinance/usuario'
 const BASE_BADGES = '/v1/comunidade/badge'
 const BASE_POSTS = '/v1/comunidade/posts'
-const BASE_COMENTARIOS = '/v1/comunidade/comentarios'
+const BASE_COMENTARIOS = '/v1/comunidade/posts/comentario'
 const BASE_SEGUIR = '/v1/comunidade/seguir'
 const BASE_COMUNIDADE = '/v1/comunidade' // onde você montou nivelRoutes
 

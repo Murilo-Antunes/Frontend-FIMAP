@@ -72,11 +72,16 @@ async function toggleLike(): Promise<void> {
     @click="openPost"
   >
     <header class="flex items-center gap-3">
-      <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+      <RouterLink
+        :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+        class="flex items-center gap-3"
+      >
+        <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+      </RouterLink>
       <div class="min-w-0">
         <RouterLink
-          :to="{ name: 'community-post', params: { id: post.id } }"
-          class="block truncate text-sm font-semibold leading-tight text-neutral-900 outline-none focus-visible:underline"
+          :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+          class="block truncate text-sm font-semibold leading-tight text-neutral-900 outline-none hover:underline focus-visible:underline"
         >
           {{ name }}
         </RouterLink>
