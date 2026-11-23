@@ -18,3 +18,12 @@ export function numeroSeguro(valor: unknown, fallback = 0): number {
   const n = Number(valor)
   return Number.isFinite(n) ? n : fallback
 }
+
+/** "Junho 2025" — mês por extenso, capitalizado e sem o "de" (como na referência). */
+export function formatarMesAno(valor: string | null | undefined): string {
+  if (!valor) return '—'
+  const data = new Date(valor)
+  if (Number.isNaN(data.getTime())) return '—'
+  const texto = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ')
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}

@@ -4,7 +4,18 @@
  * montagem de cada router no seu app.js/server.js.
  */
 import { http } from '@/lib/api/http' // TODO: ajustar para o client real do projeto
-import type { Badge, BadgeEmProgresso, BadgeUsuario, NivelInfo, PerfilUsuario } from '../types/profile.types'
+import type {
+  Badge,
+  BadgeEmProgresso,
+  BadgeUsuario,
+  ConfiguracoesSociais,
+  EstadoSolicitacao,
+  NivelInfo,
+  PerfilUsuario,
+  QuemPodeComentar,
+  ResumoSocial,
+  TipoSolicitacao,
+} from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
 
 const BASE_USUARIO = '/v1/openfinance/usuario'
@@ -13,6 +24,7 @@ const BASE_POSTS = '/v1/comunidade/posts'
 const BASE_COMENTARIOS = '/v1/comunidade/posts/comentario'
 const BASE_SEGUIR = '/v1/comunidade/seguir'
 const BASE_COMUNIDADE = '/v1/comunidade' // onde você montou nivelRoutes
+const BASE_SOCIAL = '/v1/comunidade/social' // ⚠️ rotas novas de configurações sociais (ainda não existem no back)
 
 /* ----------------------------- Perfil ----------------------------- */
 
@@ -21,8 +33,17 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
   return data.usuario ?? data
 }
 
-export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
-  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`)
+/**
+ * `idVisualizador` (quem está olhando) deixa o backend decidir se devolve o
+ * perfil completo ou só o resumo restrito de um perfil privado.
+ */
+export async function buscarPerfilPorUsername(
+  usernameSocial: string,
+  idVisualizador?: number,
+): Promise<PerfilUsuario> {
+  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`, {
+    params: idVisualizador ? { id_visualizador: idVisualizador } : undefined,
+  })
   return data.usuario ?? data
 }
 
@@ -152,4 +173,86 @@ export async function jaSegue(idSeguidor: number, idSeguindo: number): Promise<b
 export async function buscarNiveis(): Promise<NivelInfo[]> {
   const { data } = await http.get(`${BASE_COMUNIDADE}/niveis`)
   return data.niveis ?? []
+}
+
+/* ------------------- Configurações do espaço social ------------------- */
+
+const OPCOES_COMENTARIO: QuemPodeComentar[] = ['todos', 'seguidores', 'ninguem']
+// MySQL devolve TINYINT como 0/1 — normaliza pra boolean.
+const paraBool = (valor: unknown, padrao: boolean) =>
+  valor === undefined || valor === null ? padrao : Boolean(Number(valor))
+
+/** ⚠️ Rota nova: GET /v1/comunidade/social/configuracoes/:id_usuario */
+export async function buscarConfiguracoesSociais(idUsuario: number): Promise<ConfiguracoesSociais> {
+  const { data } = await http.get(`${BASE_SOCIAL}/configuracoes/${idUsuario}`)
+  const c = data.configuracoes ?? data
+  return {
+    visibilidade: paraBool(c?.visibilidade, true),
+    quem_comenta: OPCOES_COMENTARIO.includes(c?.quem_comenta) ? c.quem_comenta : 'todos',
+    notif_respostas_mencoes: paraBool(c?.notif_respostas_mencoes, true),
+    notif_topicos_ia: paraBool(c?.notif_topicos_ia, true),
+    notif_conquistas: paraBool(c?.notif_conquistas, true),
+  }
+}
+
+/** ⚠️ Rota nova: PATCH /v1/comunidade/social/configuracoes/:id_usuario (aceita campos parciais) */
+export async function atualizarConfiguracoesSociais(
+  idUsuario: number,
+  parcial: Partial<ConfiguracoesSociais>,
+) {
+  const { data } = await http.patch(`${BASE_SOCIAL}/configuracoes/${idUsuario}`, parcial)
+  return data
+}
+
+/** ⚠️ Rota nova: GET /v1/comunidade/social/resumo/:id_usuario */
+export async function buscarResumoSocial(idUsuario: number): Promise<ResumoSocial> {
+  const { data } = await http.get(`${BASE_SOCIAL}/resumo/${idUsuario}`)
+  const r = data.resumo ?? data
+  const numeroOuNull = (v: unknown) => (v === undefined || v === null || Number.isNaN(Number(v)) ? null : Number(v))
+  return {
+    audiencia_visivel: numeroOuNull(r?.audiencia_visivel),
+    xp_semana: numeroOuNull(r?.xp_semana),
+    percentil_ranking: numeroOuNull(r?.percentil_ranking),
+  }
+}
+
+/** ⚠️ Rota nova: PATCH /v1/comunidade/social/desativar/:id_usuario */
+export async function desativarPerfilSocial(idUsuario: number) {
+  const { data } = await http.patch(`${BASE_SOCIAL}/desativar/${idUsuario}`)
+  return data
+}
+
+/* ------------------ Solicitação de acesso (perfil privado) ------------------ */
+
+/** ⚠️ Rota nova: GET /v1/comunidade/seguir/solicitacao/status?id_solicitante=&id_destinatario= */
+export async function buscarEstadoSolicitacao(
+  idSolicitante: number,
+  idDestinatario: number,
+): Promise<EstadoSolicitacao> {
+  const { data } = await http.get(`${BASE_SEGUIR}/solicitacao/status`, {
+    params: { id_solicitante: idSolicitante, id_destinatario: idDestinatario },
+  })
+  return data.status === 'pendente' ? 'pendente' : 'nenhuma'
+}
+
+/** ⚠️ Rota nova: POST /v1/comunidade/seguir/solicitar */
+export async function solicitarAcesso(
+  idSolicitante: number,
+  idDestinatario: number,
+  tipo: TipoSolicitacao,
+) {
+  const { data } = await http.post(`${BASE_SEGUIR}/solicitar`, {
+    id_solicitante: idSolicitante,
+    id_destinatario: idDestinatario,
+    tipo,
+  })
+  return data
+}
+
+/** ⚠️ Rota nova: DELETE /v1/comunidade/seguir/solicitar */
+export async function cancelarSolicitacao(idSolicitante: number, idDestinatario: number) {
+  const { data } = await http.delete(`${BASE_SEGUIR}/solicitar`, {
+    data: { id_solicitante: idSolicitante, id_destinatario: idDestinatario },
+  })
+  return data
 }

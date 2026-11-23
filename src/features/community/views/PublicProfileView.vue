@@ -5,18 +5,22 @@ import { ArrowLeft, MoreHorizontal, Share2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import ProfileCard from '../components/ProfileCard.vue'
 import BadgeCard from '../components/BadgeCard.vue'
+import PrivateProfile from '../components/PrivateProfile.vue'
 import PostCard from '@/features/community/components/PostCard.vue'
 import {
   buscarBadgesUsuario,
+  buscarEstadoSolicitacao,
   buscarPerfilPorUsername,
   buscarTodasBadges,
+  cancelarSolicitacao,
   deixarDeSeguir,
   jaSegue,
   listarComentariosPorUsuario,
   listarPostsPorUsuario,
   seguir,
+  solicitarAcesso,
 } from '../services/profile.service'
-import type { BadgeUsuario, PerfilUsuario } from '../types/profile.types'
+import type { BadgeUsuario, EstadoSolicitacao, PerfilUsuario, TipoSolicitacao } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
 
 const route = useRoute()
@@ -31,6 +35,15 @@ const erro = ref<string | null>(null)
 
 const seguindo = ref(false)
 const seguindoBusy = ref(false)
+
+// Perfil privado: o backend manda acesso_restrito; se não mandar, usamos visibilidade === 0.
+const privado = computed(() => {
+  if (!perfil.value) return false
+  return perfil.value.acesso_restrito ?? Number(perfil.value.visibilidade) === 0
+})
+const estadoSolicitacao = ref<EstadoSolicitacao>('nenhuma')
+const solicitando = ref(false)
+const erroSolicitacao = ref<string | null>(null)
 
 const ABAS = [
   { id: 'publicacoes', label: 'Publicações' },
@@ -51,8 +64,10 @@ function contagem(aba: 'publicacoes' | 'respostas') {
 async function carregar(username: string) {
   carregandoPerfil.value = true
   erro.value = null
+  erroSolicitacao.value = null
+  estadoSolicitacao.value = 'nenhuma'
   try {
-    const dadosPerfil = await buscarPerfilPorUsername(username)
+    const dadosPerfil = await buscarPerfilPorUsername(username, auth.usuario?.id)
 
     if (!dadosPerfil?.id) {
       erro.value = 'Usuário não encontrado.'
@@ -65,6 +80,14 @@ async function carregar(username: string) {
     }
 
     perfil.value = dadosPerfil
+
+    // Perfil privado: não buscamos badges/posts/respostas — só o estado da solicitação.
+    if (privado.value) {
+      if (auth.usuario?.id) {
+        estadoSolicitacao.value = await buscarEstadoSolicitacao(auth.usuario.id, dadosPerfil.id)
+      }
+      return
+    }
 
     const [badgesUsuario, todasBadges, resultadoRespostas] = await Promise.all([
       buscarBadgesUsuario(dadosPerfil.id),
@@ -107,6 +130,36 @@ async function alternarSeguir() {
   }
 }
 
+async function solicitar(tipo: TipoSolicitacao) {
+  if (!perfil.value || !auth.usuario?.id || solicitando.value) return
+  solicitando.value = true
+  erroSolicitacao.value = null
+  try {
+    await solicitarAcesso(auth.usuario.id, perfil.value.id, tipo)
+    estadoSolicitacao.value = 'pendente'
+  } catch (e) {
+    console.error('Erro ao enviar solicitação:', e)
+    erroSolicitacao.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+  } finally {
+    solicitando.value = false
+  }
+}
+
+async function cancelar() {
+  if (!perfil.value || !auth.usuario?.id || solicitando.value) return
+  solicitando.value = true
+  erroSolicitacao.value = null
+  try {
+    await cancelarSolicitacao(auth.usuario.id, perfil.value.id)
+    estadoSolicitacao.value = 'nenhuma'
+  } catch (e) {
+    console.error('Erro ao cancelar solicitação:', e)
+    erroSolicitacao.value = 'Não foi possível cancelar a solicitação. Tente novamente.'
+  } finally {
+    solicitando.value = false
+  }
+}
+
 watch(
   () => route.params.username as string,
   (username) => {
@@ -118,7 +171,8 @@ watch(
 
 <template>
   <div class="mx-auto max-w-[1100px] px-4 py-6 sm:px-6">
-    <div class="mb-4 flex items-center justify-between">
+    <!-- No perfil privado a barra de topo é a do próprio PrivateProfile. -->
+    <div v-if="!(perfil && privado && !carregandoPerfil && !erro)" class="mb-4 flex items-center justify-between">
       <button
         type="button"
         class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
@@ -151,6 +205,16 @@ watch(
         Tentar novamente
       </button>
     </div>
+
+    <PrivateProfile
+      v-else-if="perfil && privado"
+      :perfil="perfil"
+      :estado="estadoSolicitacao"
+      :busy="solicitando"
+      :erro="erroSolicitacao"
+      @solicitar="solicitar"
+      @cancelar="cancelar"
+    />
 
     <div v-else-if="perfil" class="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
       <ProfileCard

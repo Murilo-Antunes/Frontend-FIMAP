@@ -22,6 +22,9 @@ export interface PerfilUsuario {
   total_seguidores: number
   total_seguindo: number
   total_badges: number
+  /** O backend deve mandar true quando o perfil é privado e quem está vendo
+   * ainda não tem conexão aprovada. Se não vier, usamos visibilidade === 0. */
+  acesso_restrito?: boolean
 }
 
 export interface Badge {
@@ -55,3 +58,28 @@ export interface NivelInfo {
 }
 
 export type AbaPerfil = 'publicacoes' | 'respostas' | 'salvos' | 'arquivados'
+
+/* ----------------------- Configurações sociais ----------------------- */
+
+export type QuemPodeComentar = 'todos' | 'seguidores' | 'ninguem'
+
+export interface ConfiguracoesSociais {
+  /** true = perfil público na comunidade (tbl_usuario.visibilidade = 1). */
+  visibilidade: boolean
+  quem_comenta: QuemPodeComentar
+  notif_respostas_mencoes: boolean
+  notif_topicos_ia: boolean
+  notif_conquistas: boolean
+}
+
+/** Números do card "resumo" da tela de configurações. Cada campo pode vir null. */
+export interface ResumoSocial {
+  audiencia_visivel: number | null
+  xp_semana: number | null
+  percentil_ranking: number | null
+}
+
+/* --------------------- Solicitação de acesso (privado) --------------------- */
+
+export type EstadoSolicitacao = 'nenhuma' | 'pendente'
+export type TipoSolicitacao = 'conexao' | 'seguir'

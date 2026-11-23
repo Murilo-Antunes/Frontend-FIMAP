@@ -123,6 +123,11 @@ function selecionarAba(aba: AbaPerfil) {
   carregarAba(aba)
 }
 
+function abrirEdicao() {
+  // ⚠️ ajuste o nome da rota conforme a tela de edição que você já criou.
+  router.push({ name: 'community-profile-edit' })
+}
+
 onMounted(async () => {
   await carregarPerfil()
   if (perfil.value) await carregarAba('publicacoes')
@@ -152,14 +157,13 @@ onMounted(async () => {
         >
           <Share2 :size="18" />
         </button>
-        <!-- ⚠️ Ainda sem tela de destino. -->
-        <button
-          type="button"
+        <RouterLink
+          :to="{ name: 'community-settings' }"
           class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
           aria-label="Configurações do perfil"
         >
           <Settings :size="18" />
-        </button>
+        </RouterLink>
       </div>
     </div>
 
@@ -178,6 +182,7 @@ onMounted(async () => {
       <ProfileCard
         :perfil="{ ...perfil, total_posts_respostas: postsMaisRespostas } as any"
         mode="own"
+        @editar="abrirEdicao"
       />
 
       <div class="flex flex-col gap-6">
