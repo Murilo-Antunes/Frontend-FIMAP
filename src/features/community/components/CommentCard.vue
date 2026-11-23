@@ -6,6 +6,7 @@ import { commentService } from '../services/comment.service'
 import type { Comentario } from '../types/community.types'
 import { ui } from '../ui'
 import { authorHandle, authorName, formatFullDate, formatRelativeShort } from '../utils/format'
+import CommentActionsMenu from './CommentActionsMenu.vue'
 import LikeButton from './LikeButton.vue'
 import UserAvatar from './UserAvatar.vue'
 
@@ -19,6 +20,7 @@ const auth = useAuthStore()
 const name = computed(() => authorName(props.comment.autor))
 const handle = computed(() => authorHandle(props.comment.autor))
 const isRoot = computed(() => props.depth === 0)
+const isOwn = computed(() => Number(props.comment.id_usuario) === auth.usuario?.id)
 
 const liked = ref(props.comment.curtiu)
 const likes = ref(props.comment.total_curtidas)
@@ -72,6 +74,7 @@ async function toggleLike(): Promise<void> {
           </time>
         </p>
       </div>
+      <CommentActionsMenu v-if="!isOwn" :post-id="comment.id_post" />
     </div>
 
     <p class="mt-2.5 whitespace-pre-line break-words text-sm leading-relaxed text-neutral-700">

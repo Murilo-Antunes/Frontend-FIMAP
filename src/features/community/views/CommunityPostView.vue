@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { isAxiosError, isCancel } from 'axios'
 import { AlertCircle, ArrowLeft, ArrowUp, Loader2, MessageSquare, RefreshCw, X } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
@@ -19,6 +19,7 @@ import UserAvatar from '../components/UserAvatar.vue'
 
 const props = defineProps<{ postId: number }>()
 
+const router = useRouter()
 const auth = useAuthStore()
 const socialProfile = useSocialProfileStore()
 
@@ -71,6 +72,14 @@ const sortedComments = computed(() => {
 
 const replyTargetName = computed(() => (replyingTo.value ? authorName(replyingTo.value.autor) : name.value))
 const canSend = computed(() => draft.value.trim().length > 0 && !sending.value)
+
+function voltar(): void {
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    void router.push({ name: 'community' })
+  }
+}
 
 async function loadComments(signal: AbortSignal): Promise<void> {
   commentsStatus.value = 'loading'
@@ -202,6 +211,14 @@ onBeforeUnmount(() => controller?.abort())
 <template>
   <div :class="ui.page">
     <section class="mx-auto flex w-full max-w-7xl flex-col px-4 py-6 sm:px-6">
+      <button
+        type="button"
+        aria-label="Voltar para a página anterior"
+        class="mb-4 inline-flex size-10 items-center justify-center self-start rounded-full text-neutral-700 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+        @click="voltar"
+      >
+        <ArrowLeft class="size-5" aria-hidden="true" />
+      </button>
       <p :class="[ui.eyebrow, 'mb-4']">Comunidade • Publicação</p>
 
       <!-- Carregando -->
