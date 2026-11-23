@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import DOMPurify from 'dompurify'
+import { Marked } from 'marked'
 import { ArrowUp, Bot, ChevronRight, MessageSquare, PanelLeftOpen, Plus, Search, X } from 'lucide-vue-next'
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
@@ -9,8 +11,13 @@ const { chats, selected, messages, draft, search, loading, loadingMessages, send
   error, transcript, filtered, form, canSend, load, select, newChat, send } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
+const markdown = new Marked({ gfm: true, breaks: true })
 const initials = computed(() => (auth.usuario?.nome ?? '').split(' ').filter(Boolean).slice(0, 2)
   .map(part => part[0]).join('').toUpperCase())
+function renderMarkdown(content: string): string {
+  const html = markdown.parse(content, { async: false })
+  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
+}
 function dateLabel(value: string) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('pt-BR', {
@@ -78,7 +85,8 @@ function onKeydown(event: KeyboardEvent) {
           </div>
           <div v-for="(message, index) in messages" :key="message.id ?? index" class="mb-6 flex items-start gap-3" :class="message.papel === 0 ? 'flex-row-reverse' : ''">
             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-[10px] text-white">{{ message.papel === 0 ? initials : 'AI' }}</span>
-            <div class="max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6" :class="message.papel === 0 ? 'bg-black text-white' : 'border border-neutral-200 bg-white shadow-sm'">{{ message.conteudo || 'Preparando resposta...' }}</div>
+            <div v-if="message.papel === 0" class="max-w-[88%] whitespace-pre-wrap break-words rounded-2xl bg-black px-4 py-3 text-sm leading-6 text-white">{{ message.conteudo }}</div>
+            <div v-else class="markdown-content max-w-[88%] break-words rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm leading-6 shadow-sm" v-html="message.conteudo ? renderMarkdown(message.conteudo) : 'Preparando resposta...'" />
           </div>
         </div>
         <div class="px-4 pb-4 sm:px-8 sm:pb-5">
@@ -102,6 +110,27 @@ function onKeydown(event: KeyboardEvent) {
 .icon-button { padding: 6px; border-radius: 8px; color: #737373; }
 .icon-button:hover { background: #f5f5f5; }
 button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #737373; outline-offset: 3px; }
+.markdown-content :deep(p) { margin: 0.5rem 0; }
+.markdown-content :deep(p:first-child) { margin-top: 0; }
+.markdown-content :deep(p:last-child) { margin-bottom: 0; }
+.markdown-content :deep(h1), .markdown-content :deep(h2), .markdown-content :deep(h3) { margin: 1rem 0 0.5rem; font-weight: 700; line-height: 1.35; }
+.markdown-content :deep(h1) { font-size: 1.25rem; }
+.markdown-content :deep(h2) { font-size: 1.125rem; }
+.markdown-content :deep(h3) { font-size: 1rem; }
+.markdown-content :deep(ul), .markdown-content :deep(ol) { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-content :deep(ul) { list-style: disc; }
+.markdown-content :deep(ol) { list-style: decimal; }
+.markdown-content :deep(li + li) { margin-top: 0.25rem; }
+.markdown-content :deep(a) { color: #2563eb; text-decoration: underline; }
+.markdown-content :deep(strong) { font-weight: 700; }
+.markdown-content :deep(blockquote) { margin: 0.75rem 0; border-left: 3px solid #d4d4d4; padding-left: 0.75rem; color: #525252; }
+.markdown-content :deep(code) { border-radius: 0.25rem; background: #f5f5f5; padding: 0.125rem 0.3rem; font-family: ui-monospace, monospace; font-size: 0.875em; }
+.markdown-content :deep(pre) { overflow-x: auto; margin: 0.75rem 0; border-radius: 0.5rem; background: #171717; padding: 0.75rem; color: #f5f5f5; }
+.markdown-content :deep(pre code) { background: transparent; padding: 0; color: inherit; }
+.markdown-content :deep(table) { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0.75rem 0; }
+.markdown-content :deep(th), .markdown-content :deep(td) { border: 1px solid #e5e5e5; padding: 0.4rem 0.6rem; text-align: left; }
+.markdown-content :deep(th) { background: #f5f5f5; font-weight: 600; }
+.markdown-content :deep(hr) { margin: 1rem 0; border-color: #e5e5e5; }
 @media (max-width: 767px) {
   .chat-shell { grid-template-columns: minmax(0, 1fr); height: auto; min-height: calc(100dvh - 150px); }
   .chat-shell > aside { max-height: 320px; }

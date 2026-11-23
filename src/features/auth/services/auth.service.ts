@@ -1,4 +1,4 @@
-import { http } from '@/lib/api/http'
+import { http, publicHttp } from '@/lib/api/http'
 import type {
   ApiSuccessResponse,
   ForgotPasswordResponse,
@@ -15,7 +15,7 @@ const BASE = '/v1/openfinance/usuario'
 export const authService = {
 
   async register(payload: RegisterPayload): Promise<number> {
-    const { data } = await http.post<RegisterUserResponse>(`${BASE}/criar-usuario`, {
+    const { data } = await publicHttp.post<RegisterUserResponse>(`${BASE}/criar-usuario`, {
       nome: payload.nome,
       cpf: payload.cpf,
       email: payload.email,
@@ -29,7 +29,7 @@ export const authService = {
   },
 
   async verifyRegisterOtp(idUsuario: number, codigo: string): Promise<void> {
-    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/consultar/otp/${idUsuario}`, {
+    const { data } = await publicHttp.post<ApiSuccessResponse>(`${BASE}/consultar/otp/${idUsuario}`, {
       id_usuario: idUsuario,
       codigo,
     })
@@ -38,19 +38,19 @@ export const authService = {
     }
   },
 
-  async login(payload: LoginPayload): Promise<Usuario> {
+  async login(payload: LoginPayload): Promise<LoginResponse> {
     const dispositivoInfo = obterInformacoesDispositivo()
     
-    const { data } = await http.post<LoginResponse>(`${BASE}/login`, {
+    const { data } = await publicHttp.post<LoginResponse>(`${BASE}/login`, {
       email: payload.email,
       senha: payload.senha,
       dispositivo: dispositivoInfo,
     })
     
-    if (!data?.sucesso || !data.usuario) {
+    if (!data?.sucesso || !data.usuario || !data.access_token) {
       throw new Error(data?.mensagem ?? 'Credenciais inválidas.')
     }
-    return data.usuario
+    return data
   },
 
   async session(): Promise<Usuario | null> {
@@ -69,7 +69,7 @@ export const authService = {
     const url = `${BASE}/usuario/email/${email}`
     
     console.log('GET URL:', url)
-    const { data } = await http.get<{ id_usuario: number, usuario?: { id: number } }>(url)
+    const { data } = await publicHttp.get<{ id_usuario: number, usuario?: { id: number } }>(url)
     console.log('Response data:', data)
     
     // A API retorna o id dentro de data.usuario.id, não diretamente em data.id_usuario
@@ -86,7 +86,7 @@ export const authService = {
    * POST /v1/openfinance/usuario/codigo-otp/senha/:id_usuario
    */
   async forgotPassword(idUsuario: number): Promise<ForgotPasswordResponse> {
-    const { data } = await http.post<ForgotPasswordResponse>(`${BASE}/codigo-otp/senha/${idUsuario}`)
+    const { data } = await publicHttp.post<ForgotPasswordResponse>(`${BASE}/codigo-otp/senha/${idUsuario}`)
     console.log(data)
     return data
   },
@@ -96,7 +96,7 @@ export const authService = {
    * POST /v1/openfinance/usuario/alterar/verificar-codigo/:id_usuario
    */
   async verifyPasswordOtp(idUsuario: number, codigo: string): Promise<void> {
-    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
+    const { data } = await publicHttp.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
       codigo,
     })
     if (!data?.sucesso) {

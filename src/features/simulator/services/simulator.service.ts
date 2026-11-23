@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { http } from '@/lib/api/http'
-import { useAuthStore } from '@/stores/auth.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import type {
   MarketIndicators,
@@ -10,17 +9,10 @@ import type {
 } from '../types/simulator.types'
 
 /**
- * Base das rotas de simulação. Os controllers devolvem o corpo "cru" (array/objeto), sem o
- * envelope { sucesso, mensagem } — o service lê exatamente o que o backend envia.
- *
- * Sem JWT por enquanto: como nas rotas Open Finance, o front envia o id do usuário logado
- * explicitamente, em `?id_usuario=` (ver README-ALTERACOES §A2). Quando o JWT voltar, basta
- * remover `owner()` daqui e o backend voltar a ler o usuário do token.
+ * Os controllers retornam o corpo sem envelope.
+ * O cliente http anexa o JWT e a API identifica o usuario autenticado pelo token.
  */
 const BASE = '/v1/simulacoes'
-
-/** Identifica o dono da simulação em toda requisição (usuário logado, só em memória). */
-const owner = () => ({ id_usuario: useAuthStore().usuario?.id })
 
 type Record_<K extends SimulationKind> = SimulationKindMap[K]['record']
 type Payload<K extends SimulationKind> = SimulationKindMap[K]['payload']
@@ -32,7 +24,7 @@ export const simulatorService = {
     signal?: AbortSignal,
   ): Promise<Record_<K>[]> {
     const { data } = await http.get<Record_<K>[]>(`${BASE}/${kind}`, {
-      params: { ...owner(), ...params },
+      params,
       signal,
     })
     return data
@@ -43,17 +35,12 @@ export const simulatorService = {
     id: number,
     signal?: AbortSignal,
   ): Promise<Record_<K>> {
-    const { data } = await http.get<Record_<K>>(`${BASE}/${kind}/${id}`, {
-      params: owner(),
-      signal,
-    })
+    const { data } = await http.get<Record_<K>>(`${BASE}/${kind}/${id}`, { signal })
     return data
   },
 
   async create<K extends SimulationKind>(kind: K, payload: Payload<K>): Promise<Record_<K>> {
-    const { data } = await http.post<Record_<K>>(`${BASE}/${kind}`, payload, {
-      params: owner(),
-    })
+    const { data } = await http.post<Record_<K>>(`${BASE}/${kind}`, payload)
     return data
   },
 
@@ -62,14 +49,12 @@ export const simulatorService = {
     id: number,
     payload: Payload<K>,
   ): Promise<Record_<K>> {
-    const { data } = await http.patch<Record_<K>>(`${BASE}/${kind}/${id}`, payload, {
-      params: owner(),
-    })
+    const { data } = await http.patch<Record_<K>>(`${BASE}/${kind}/${id}`, payload)
     return data
   },
 
   async remove(kind: SimulationKind, id: number): Promise<void> {
-    await http.delete(`${BASE}/${kind}/${id}`, { params: owner() })
+    await http.delete(`${BASE}/${kind}/${id}`)
   },
 
   /** Endpoint sugerido (README-ALTERACOES §3): CDI, IPCA e poupança em % a.a. */
