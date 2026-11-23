@@ -67,10 +67,7 @@ export const authService = {
 
   async getUserIdByEmail(email: string): Promise<number> {
     const url = `${BASE}/usuario/email/${email}`
-    
-    console.log('GET URL:', url)
     const { data } = await http.get<{ id_usuario: number, usuario?: { id: number } }>(url)
-    console.log('Response data:', data)
     
     // A API retorna o id dentro de data.usuario.id, não diretamente em data.id_usuario
     const idUsuario = data.id_usuario ?? data.usuario?.id
@@ -87,35 +84,21 @@ export const authService = {
    */
   async forgotPassword(idUsuario: number): Promise<ForgotPasswordResponse> {
     const { data } = await http.post<ForgotPasswordResponse>(`${BASE}/codigo-otp/senha/${idUsuario}`)
-    console.log(data)
     return data
   },
 
-  /**
-   * Verifica o código OTP para redefinição de senha.
-   * POST /v1/openfinance/usuario/alterar/verificar-codigo/:id_usuario
-   */
-  async verifyPasswordOtp(idUsuario: number, codigo: string): Promise<void> {
-    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
+  /** Redefine senha sem sessão: POST /senha/redefinir/:id_usuario. */
+  async resetPassword(idUsuario: number, codigo: string, novaSenha: string): Promise<void> {
+    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/senha/redefinir/${idUsuario}`, {
       codigo,
+      novaSenha,
     })
     if (!data?.sucesso) {
-      throw new Error(data?.mensagem ?? 'Código inválido.')
+      throw new Error(data?.mensagem ?? 'Não foi possível redefinir a senha.')
     }
   },
 
-  /**
-   * Redefine a senha após OTP verificado.
-   * (Esta função agora será usada apenas para atualizar a senha via updateUsuario)
-   */
-  async updatePassword(idUsuario: number, novaSenha: string): Promise<void> {
-    console.log(`Atualizando senha para usuário ${idUsuario}...`);
-    await this.updateUsuario(idUsuario, { senha: novaSenha } as any)
-    console.log(`Senha atualizada com sucesso para usuário ${idUsuario}.`);
-  },
-
   async updateUsuario(idUsuario: number, payload: Partial<RegisterPayload>): Promise<void> {
-    console.log(`Enviando PATCH para ${BASE}/usuario-update/${idUsuario} com payload:`, payload);
     await http.patch(`${BASE}/usuario-update/${idUsuario}`, payload)
   },
 

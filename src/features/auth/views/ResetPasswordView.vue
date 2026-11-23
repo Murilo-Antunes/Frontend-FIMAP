@@ -70,7 +70,6 @@ async function onSubmit() {
     submitting.value = true
 
     try {
-      await authService.verifyPasswordOtp(idUsuario, data.codigo)
       step.value = 'new-password'
     } catch (error) {
       formError.value = toApiError(error).mensagem
@@ -95,8 +94,8 @@ async function onSubmit() {
         }
         await passwordService.changePassword(idUsuario, senhaAtual, data.novaSenha)
       } else {
-        // Fluxo "esqueci a senha": já passou pelo OTP.
-        await authService.updatePassword(idUsuario, data.novaSenha)
+        // O backend valida o OTP e redefine a senha nesta mesma chamada.
+        await authService.resetPassword(idUsuario, form.value.codigo, data.novaSenha)
       }
       passwordChange.clear()
 
@@ -140,7 +139,7 @@ async function onSubmit() {
           {{ errors.codigo }}
         </p>
 
-        <SubmitButton :loading="submitting">Verificar Código</SubmitButton>
+        <SubmitButton :loading="submitting">Continuar</SubmitButton>
 
         <RouterLink
           :to="{ name: 'forgot-password' }"
