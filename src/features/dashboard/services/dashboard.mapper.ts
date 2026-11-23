@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
-import { formatCurrency, formatPercent } from '@/lib/format'
+import { formatPercent } from '@/lib/format'
 import type {
   CoreItem,
   DashboardOverview,

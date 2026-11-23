@@ -11,7 +11,7 @@ const props = defineProps<{ institution: Institution }>()
 const emit = defineEmits(['deleted'])
 
 const authStore = useAuthStore()
-const connectionId = ref<number | null>(null)
+const connectionId = ref<string | number | null>(null)
 
 onMounted(async () => {
   const userId = authStore.usuario?.id

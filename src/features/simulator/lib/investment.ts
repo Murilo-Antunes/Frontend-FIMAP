@@ -33,7 +33,7 @@ function isValid(input: InvestmentInput): boolean {
  * para mensal equivalente. Projeção bruta: não considera IR nem taxas.
  * Retorna null para entradas inválidas.
  */
-export function calculateInvestment(input: InvestmentInput): InvestmentResult | null {
+export function calculateInvestment(input: InvestmentInput, interval: 1 | 12 = 12): InvestmentResult | null {
   if (!isValid(input)) return null
 
   const { valorInicial, aporteMensal, prazoMeses } = input
@@ -48,7 +48,7 @@ export function calculateInvestment(input: InvestmentInput): InvestmentResult | 
   for (let month = 1; month <= prazoMeses; month++) {
     total = total * (1 + rate) + aporteMensal
     if (savingsRate !== null) savings = savings * (1 + savingsRate) + aporteMensal
-    if (month % 12 === 0 || month === prazoMeses) {
+    if (month % interval === 0 || month === prazoMeses) {
       serie.push({ ano: month / 12, investido: valorInicial + aporteMensal * month, total })
     }
   }

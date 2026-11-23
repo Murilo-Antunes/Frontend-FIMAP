@@ -4,20 +4,41 @@ import { ArrowUp, Bot, MessageSquare, PanelLeftOpen, Pencil, Plus, Search, Trash
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import ChatAssistantMessage from '../components/ChatAssistantMessage.vue'
+import ChatFinancialActionCard from '../components/ChatFinancialActionCard.vue'
 import { CHAT_LIMIT, CHAT_NAME_LIMIT, useChat } from '../composables/useChat'
+import type { FinancialAction } from '../schemas/financial-action.schemas'
 import type { Chat } from '../types/chat.types'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
   error, transcript, filtered, form, canSend, atLimit, managing, managementError,
-  load, select, newChat, send, manageChat } = useChat()
+  confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
 const dialog = ref<HTMLDialogElement | null>(null)
 const action = ref<{ chat: Chat; kind: 'rename' | 'delete' } | null>(null)
 const chatName = ref('')
+const question = ref<HTMLTextAreaElement | null>(null)
+const busy = computed(() => sending.value || managing.value || confirmingFinancialAction.value !== null)
 const cannotCreate = computed(() => !auth.isAuthenticated || loading.value || !!historyError.value
-  || sending.value || managing.value || atLimit.value)
+  || busy.value || atLimit.value)
 const limitMessage = 'Você atingiu o limite de conversas. Exclua uma para criar outra.'
+
+const financialActionsByMessage = computed(() => {
+  const latest = new Map<string, { index: number; action: FinancialAction }>()
+  messages.value.forEach((message, index) => {
+    for (const action of message.acoes_financeiras ?? []) {
+      const previous = latest.get(action.id)
+      if (!previous || action.versao >= previous.action.versao) latest.set(action.id, { index, action })
+    }
+  })
+  const byMessage = new Map<number, FinancialAction[]>()
+  for (const { index, action } of latest.values()) {
+    const group = byMessage.get(index) ?? []
+    group.push(action)
+    byMessage.set(index, group)
+  }
+  return byMessage
+})
 
 watch(action, (value) => {
   if (value) dialog.value?.showModal()
@@ -59,6 +80,18 @@ function onKeydown(event: KeyboardEvent) {
     void send()
   }
 }
+
+function adjustFinancialAction(proposal: FinancialAction) {
+  if (!draft.value.trim()) {
+    const context = {
+      meta: 'Na meta',
+      investimento: 'Na simulação de investimento',
+      amortizacao: 'Na simulação de amortização',
+    }[proposal.tipo]
+    draft.value = proposal.nome ? `${context} “${proposal.nome}”, ` : `${context} em preparação, `
+  }
+  question.value?.focus()
+}
 </script>
 
 <template>
@@ -97,12 +130,12 @@ function onKeydown(event: KeyboardEvent) {
           <div v-for="chat in filtered" :key="chat.id" class="mb-1 flex items-center gap-1 rounded-xl border pr-2 transition hover:bg-neutral-50"
             :class="selected?.id === chat.id ? 'border-neutral-200 bg-neutral-100' : 'border-transparent'">
             <button type="button" class="min-w-0 flex-1 rounded-xl p-3 text-left disabled:opacity-50"
-              :disabled="sending || managing" :aria-current="selected?.id === chat.id ? 'true' : undefined" @click="select(chat)">
+              :disabled="busy" :aria-current="selected?.id === chat.id ? 'true' : undefined" @click="select(chat)">
               <span class="block truncate text-sm" :class="{ 'font-semibold': selected?.id === chat.id }">{{ chat.nome }}</span>
               <span class="mt-1 block text-[11px] text-neutral-500">{{ dateLabel(chat.data_criacao) }}</span>
             </button>
-            <button type="button" class="icon-button" :disabled="sending || managing || loading" :aria-label="`Renomear ${chat.nome}`" title="Renomear conversa" @click="openAction(chat, 'rename')"><Pencil :size="16" /></button>
-            <button type="button" class="icon-button hover:text-red-700" :disabled="sending || managing || loading" :aria-label="`Excluir ${chat.nome}`" title="Excluir conversa" @click="openAction(chat, 'delete')"><Trash2 :size="16" /></button>
+            <button type="button" class="icon-button" :disabled="busy || loading" :aria-label="`Renomear ${chat.nome}`" title="Renomear conversa" @click="openAction(chat, 'rename')"><Pencil :size="16" /></button>
+            <button type="button" class="icon-button hover:text-red-700" :disabled="busy || loading" :aria-label="`Excluir ${chat.nome}`" title="Excluir conversa" @click="openAction(chat, 'delete')"><Trash2 :size="16" /></button>
           </div>
         </div>
       </aside>
@@ -120,10 +153,20 @@ function onKeydown(event: KeyboardEvent) {
             <h2 class="text-xl font-semibold">Como posso ajudar com suas finanças?</h2>
             <p class="mt-3 max-w-sm text-sm leading-6 text-neutral-500">Comece uma conversa sobre seus gastos, planejamento ou objetivos financeiros.</p>
           </div>
-          <div v-for="(message, index) in messages" :key="message.id ?? index" class="mb-6 flex items-start gap-3" :class="message.papel === 0 ? 'flex-row-reverse' : ''">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-[10px] text-white">{{ message.papel === 0 ? initials : 'AI' }}</span>
-            <div v-if="message.papel === 0" class="min-w-0 max-w-[88%] rounded-2xl bg-black px-4 py-3 text-sm leading-6 wrap-anywhere whitespace-pre-wrap text-white">{{ message.conteudo }}</div>
-            <ChatAssistantMessage v-else class="max-w-3xl flex-1 pt-0.5" :content="message.conteudo" :streaming="sending && index === messages.length - 1" />
+          <div v-for="(message, index) in messages" :key="message.id === undefined ? `local-${index}` : `message-${message.id}`" class="mb-6" data-chat-message>
+            <div v-if="message.papel === 0 || message.conteudo || (sending && index === messages.length - 1)"
+              class="flex items-start gap-3" :class="{ 'flex-row-reverse': message.papel === 0 }">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black text-[10px] text-white">{{ message.papel === 0 ? initials : 'AI' }}</span>
+              <div v-if="message.papel === 0" class="min-w-0 max-w-[88%] rounded-2xl bg-black px-4 py-3 text-sm leading-6 wrap-anywhere whitespace-pre-wrap text-white">{{ message.conteudo }}</div>
+              <ChatAssistantMessage v-else class="max-w-3xl flex-1 pt-0.5" :content="message.conteudo" :streaming="sending && index === messages.length - 1" />
+            </div>
+            <div v-if="financialActionsByMessage.has(index)" class="mt-4 min-w-0 max-w-3xl space-y-4 sm:ml-10">
+              <ChatFinancialActionCard v-for="proposal in financialActionsByMessage.get(index)" :key="proposal.id"
+                :action="proposal" :data-financial-action="`${proposal.id}-${proposal.versao}`"
+                :busy="confirmingFinancialAction === proposal.id" :disabled="!canSend"
+                :error="financialActionError?.id === proposal.id && proposal.status !== 'salva' ? financialActionError.message : undefined"
+                @confirm="confirmFinancialAction" @adjust="adjustFinancialAction(proposal)" />
+            </div>
           </div>
         </div>
         <div class="px-4 pb-4 sm:px-8 sm:pb-5">
@@ -132,7 +175,7 @@ function onKeydown(event: KeyboardEvent) {
           <p v-if="!historyOpen && atLimit && !selected" class="mb-3 text-center text-xs text-neutral-500">{{ limitMessage }}</p>
           <form class="flex items-end gap-3 rounded-2xl bg-neutral-100 p-3 shadow-sm" @submit.prevent="send">
             <label for="chat-question" class="sr-only">Pergunte algo sobre suas finanças</label>
-            <textarea id="chat-question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
+            <textarea id="chat-question" ref="question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
             <button type="submit" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-neutral-700 disabled:opacity-30" :disabled="!canSend || !draft.trim()" :aria-label="sending ? 'Aguardando resposta' : 'Enviar mensagem'"><ArrowUp :size="21" /></button>
           </form>
           <p v-if="form.errors.pergunta" id="chat-question-error" role="alert" class="mt-2 text-xs text-red-600">{{ form.errors.pergunta }}</p>

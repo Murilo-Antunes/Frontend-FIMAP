@@ -1,3 +1,5 @@
+import type { FinancialAction } from '../schemas/financial-action.schemas'
+
 export interface Chat {
   id: number
   nome: string
@@ -9,6 +11,7 @@ export interface ChatMessage {
   conteudo: string
   papel: 0 | 1
   data_envio?: string
+  acoes_financeiras?: FinancialAction[]
 }
 
 export interface ChatResponse<T> {
@@ -19,5 +22,5 @@ export interface ChatResponse<T> {
 
 export type ChatEvent =
   | { tipo: 'trecho'; conteudo: string }
-  | { tipo: 'fim'; id_chat: number }
+  | { tipo: 'fim'; id_chat: number; acoes_financeiras?: FinancialAction[] }
   | { tipo: 'erro'; codigo: string; mensagem: string }

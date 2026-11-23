@@ -1,4 +1,5 @@
 import type { ChatEvent } from '../types/chat.types'
+import { parseFinancialActions } from '../schemas/financial-action.schemas'
 
 /** SSE pode dividir um evento e até um caractere UTF-8 entre blocos. */
 export async function readChatStream(
@@ -23,7 +24,10 @@ export async function readChatStream(
         if (!data) continue
         const event: ChatEvent = JSON.parse(data)
         if (event.tipo === 'erro') throw new Error(event.mensagem)
-        if (event.tipo === 'fim') finished = true
+        if (event.tipo === 'fim') {
+          finished = true
+          event.acoes_financeiras = parseFinancialActions(event.acoes_financeiras)
+        }
         onEvent(event)
       }
       if (done) break

@@ -91,22 +91,22 @@ export function mapLoanDetail(data: LoanDetailApiResponse): LoanDetail | null {
   console.log('DEBUG: mapLoanDetail data:', data)
 
   const loan = mapLoan(data.emprestimo)
-  // Vamos adaptar para a estrutura que o log está mostrando:
-  const totalParcelas = data.totalParcelas ?? loan.totalParcelas
+  const totalParcelas = data.totalParcelas ?? data.resumo?.totalParcelas ?? loan.totalParcelas
   const desconto = data.emprestimo.descontoAntecipacaoPercentual ?? null
 
-  const pendentesRaw = data.pendentes ?? []
+  const pendentesRaw = data.pendentes ?? data.parcelas?.pendentes ?? []
   const proxima = [...pendentesRaw].sort((a, b) => dayjs(a.vencimento).diff(dayjs(b.vencimento)))[0]
 
   const pendentes = pendentesRaw
     .map((raw) => mapInstallment(raw, totalParcelas, proxima?.numero ?? null, desconto))
     .sort((a, b) => a.numero - b.numero)
 
-  const amortizadas = (data.amortizadas ?? [])
+  const amortizadas = (data.amortizadas ?? data.parcelas?.amortizadas ?? [])
     .map((raw) => mapInstallment(raw, totalParcelas, null, desconto))
     .sort((a, b) => b.numero - a.numero)
 
-  const pagasVisiveis = (data.pagas?.itens ?? [])
+  const pagas = data.pagas ?? data.parcelas?.pagas
+  const pagasVisiveis = (pagas?.itens ?? [])
     .map((raw) => mapInstallment(raw, totalParcelas, null, desconto))
     .sort((a, b) => b.numero - a.numero)
 
@@ -115,7 +115,7 @@ export function mapLoanDetail(data: LoanDetailApiResponse): LoanDetail | null {
     pendentes,
     amortizadas,
     pagasVisiveis,
-    pagasTemMais: data.pagas?.temMais ?? false,
+    pagasTemMais: pagas?.temMais ?? false,
     pagasResumoRestante: null,
   }
 }

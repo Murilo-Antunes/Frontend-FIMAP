@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
 import { computed, onMounted } from 'vue'
-import { Bell, Menu, Settings, UserRound, X } from 'lucide-vue-next'
+import { Bell, Menu, UserRound, X } from 'lucide-vue-next'
 import BrandLogo from '@/components/shared/BrandLogo.vue'
 import { MAIN_NAV, SIDEBAR_NAV, SIDEBAR_ID, type NavItem } from '@/config/navigation'
 import { navAttrs } from './navAttrs'

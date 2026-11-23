@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import type { ApexOptions } from 'apexcharts'
-import type { ChartSeries } from '../lib/chart-options'
+import type { ApexAxisChartSeries, ApexOptions } from 'apexcharts'
 
 const props = defineProps<{
   type: 'area' | 'line'
   options: ApexOptions
-  series: ChartSeries[]
+  series: ApexAxisChartSeries
   /** Descrição textual para leitores de tela */
   summary: string
   height?: number

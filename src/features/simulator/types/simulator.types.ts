@@ -79,7 +79,7 @@ export interface InvestmentResult {
   ganhoSobrePoupanca: number | null
   /** % a.a. acima do IPCA (negativo = abaixo da inflação); null sem indicador de IPCA */
   rentabilidadeReal: number | null
-  /** um ponto por ano (0..anos); o último pode ser fracionário se o prazo não for múltiplo de 12 */
+  /** Tempo em anos. A série pode ter pontos mensais ou anuais. */
   serie: { ano: number; investido: number; total: number }[]
 }
 
@@ -96,7 +96,7 @@ export interface AmortizationResult {
   /** custo efetivo anual: juros pagos ÷ saldo inicial ÷ prazo original (anos), em % a.a. */
   cetEfetivo: number
   cetEfetivoOriginal: number
-  /** saldo devedor por ano (0..anos) */
+  /** Saldos devedores com tempo em anos. A série pode ter pontos mensais ou anuais. */
   serie: { ano: number; comAporte: number; semAporte: number }[]
   /** ano (1-based) em que o saldo zera com o aporte extra */
   quitacaoAno: number

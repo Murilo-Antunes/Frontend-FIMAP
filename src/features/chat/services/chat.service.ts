@@ -2,6 +2,7 @@ import { http } from '@/lib/api/http'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Chat, ChatEvent, ChatMessage, ChatResponse } from '../types/chat.types'
+import { financialActionSchema, parseFinancialActions, type FinancialAction } from '../schemas/financial-action.schemas'
 import { readChatStream } from './chat-stream'
 
 const BASE = '/v1/ia/chat'
@@ -35,7 +36,21 @@ export const chatService = {
   async messages(id: number, signal?: AbortSignal): Promise<ChatMessage[]> {
     const idUsuario = requireUserId()
     const { data } = await http.get<ChatResponse<ChatMessage[]>>(`${BASE}/listar-chat/${id}/mensagens/${idUsuario}`, { signal })
-    return requireSuccess(data).conteudo
+    return requireSuccess(data).conteudo.map(message => ({
+      ...message,
+      acoes_financeiras: message.papel === 1 ? parseFinancialActions(message.acoes_financeiras) : undefined,
+    }))
+  },
+  async confirmFinancialAction(id: number, action: FinancialAction, signal: AbortSignal): Promise<FinancialAction> {
+    const { data } = await http.post<ChatResponse<unknown>>(
+      `${BASE}/${id}/acoes/${action.id}/confirmar`, { versao: action.versao }, { signal },
+    )
+    const saved = financialActionSchema.safeParse(requireSuccess(data).conteudo)
+    if (!saved.success || saved.data.status !== 'salva' || saved.data.id !== action.id
+      || saved.data.versao !== action.versao || saved.data.tipo !== action.tipo) {
+      throw new Error('Não foi possível confirmar o salvamento. Tente novamente.')
+    }
+    return saved.data
   },
   async rename(id: number, nome: string, signal: AbortSignal): Promise<void> {
     const { data } = await http.patch<ChatResponse<unknown>>(

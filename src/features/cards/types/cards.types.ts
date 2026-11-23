@@ -48,6 +48,7 @@ export interface ListarCartoesApi {
 
 export interface Cartao {
   id: string
+  itemId: string
   nome: string
   instituicao: string | null
   moeda: string
