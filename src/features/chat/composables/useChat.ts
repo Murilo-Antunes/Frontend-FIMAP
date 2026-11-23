@@ -7,6 +7,9 @@ import { chatMessageSchema } from '../schemas/chat.schemas'
 import { chatService } from '../services/chat.service'
 import type { Chat, ChatMessage } from '../types/chat.types'
 
+export const CHAT_LIMIT = 20
+export const CHAT_NAME_LIMIT = 45
+
 export function useChat() {
   const auth = useAuthStore()
   const chats = ref<Chat[]>([])
@@ -17,6 +20,8 @@ export function useChat() {
   const loading = ref(false)
   const loadingMessages = ref(false)
   const sending = ref(false)
+  const managing = ref(false)
+  const managementError = ref('')
   const historyError = ref('')
   const error = ref('')
   const transcript = ref<HTMLElement | null>(null)
@@ -26,6 +31,7 @@ export function useChat() {
   let detail: AbortController | null = null
   let generation = 0
   const selected = computed(() => chats.value.find(chat => chat.id === selectedId.value))
+  const atLimit = computed(() => chats.value.length >= CHAT_LIMIT)
   const filtered = computed(() => chats.value.filter(chat => chat.nome.toLocaleLowerCase('pt-BR')
     .includes(search.value.toLocaleLowerCase('pt-BR'))))
   const describeError = (cause: unknown) => axios.isAxiosError(cause)
@@ -33,7 +39,7 @@ export function useChat() {
     : cause instanceof Error ? cause.message : toApiError(cause).mensagem
 
   async function load() {
-    if (!auth.isAuthenticated) return
+    if (!auth.isAuthenticated || loading.value || managing.value) return
     const current = generation
     loading.value = true
     historyError.value = ''
@@ -56,6 +62,33 @@ export function useChat() {
     error.value = ''
     loadingMessages.value = false
     form.clearErrors()
+  }
+
+  async function manageChat(chat: Chat, name: string | null): Promise<boolean> {
+    if (!auth.isAuthenticated || sending.value || loading.value || managing.value) return false
+    const current = generation
+    const signal = session.signal
+    managing.value = true
+    managementError.value = ''
+    try {
+      if (name === null) await chatService.remove(chat.id, signal)
+      else await chatService.rename(chat.id, name, signal)
+      if (current !== generation || signal.aborted) return false
+
+      if (name === null) {
+        chats.value = chats.value.filter(item => item.id !== chat.id)
+        cache.delete(chat.id)
+        if (selectedId.value === chat.id) newChat()
+      } else {
+        chats.value = chats.value.map(item => item.id === chat.id ? { ...item, nome: name } : item)
+      }
+      return true
+    } catch (cause) {
+      if (current === generation && !signal.aborted) managementError.value = describeError(cause)
+      return false
+    } finally {
+      if (current === generation) managing.value = false
+    }
   }
 
   async function select(chat: Chat) {
@@ -88,19 +121,16 @@ export function useChat() {
   }
 
   async function send() {
-    if (!auth.isAuthenticated || sending.value || loading.value || loadingMessages.value || historyError.value) return
-    // Não envie sem conhecer o histórico de uma conversa existente.
-    if (selectedId.value !== null && !cache.has(selectedId.value)) return
+    if (!canSend.value) return
     const data = form.validate({ pergunta: draft.value })
     if (!data) return
     const current = generation
     const signal = session.signal
-    console.log(signal)
     sending.value = true
     error.value = ''
     try {
       if (selectedId.value === null) {
-        const chat = await chatService.create(data.pergunta.slice(0, 45), signal)
+        const chat = await chatService.create(data.pergunta.slice(0, CHAT_NAME_LIMIT), signal)
         if (current !== generation) return
         chats.value.unshift(chat)
         selectedId.value = chat.id
@@ -131,7 +161,13 @@ export function useChat() {
         throw cause
       }
     } catch (cause) {
-      if (current === generation && !signal.aborted) error.value = describeError(cause)
+      if (current === generation && !signal.aborted) {
+        error.value = describeError(cause)
+        if (selectedId.value === null && axios.isAxiosError(cause)
+          && cause.response?.status === 409 && cause.response.data?.codigo === 'CHAT_LIMITE_USUARIO') {
+          await load()
+        }
+      }
     } finally {
       if (current === generation) sending.value = false
     }
@@ -151,6 +187,9 @@ export function useChat() {
     error.value = ''
     historyError.value = ''
     sending.value = false
+    managing.value = false
+    managementError.value = ''
+    loading.value = false
     loadingMessages.value = false
     if (id) void load()
   }, { immediate: true })
@@ -160,8 +199,10 @@ export function useChat() {
   })
   onScopeDispose(() => { session.abort(); detail?.abort() })
 
-  const canSend = computed(() => auth.isAuthenticated && !sending.value && !loading.value && !loadingMessages.value && !historyError.value
-    && (selectedId.value === null || cache.has(selectedId.value)))
+  const canSend = computed(() => auth.isAuthenticated && !sending.value && !managing.value
+    && !loading.value && !loadingMessages.value && !historyError.value
+    && (selectedId.value === null ? !atLimit.value : cache.has(selectedId.value)))
   return { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
-    error, transcript, filtered, form, canSend, load, select, newChat, send }
+    error, transcript, filtered, form, canSend, atLimit, managing, managementError,
+    load, select, newChat, send, manageChat }
 }

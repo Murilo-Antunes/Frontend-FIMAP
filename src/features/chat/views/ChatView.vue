@@ -1,15 +1,50 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ArrowUp, Bot, ChevronRight, MessageSquare, PanelLeftOpen, Plus, Search, X } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { ArrowUp, Bot, MessageSquare, PanelLeftOpen, Pencil, Plus, Search, Trash2, X } from 'lucide-vue-next'
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import ChatAssistantMessage from '../components/ChatAssistantMessage.vue'
-import { useChat } from '../composables/useChat'
+import { CHAT_LIMIT, CHAT_NAME_LIMIT, useChat } from '../composables/useChat'
+import type { Chat } from '../types/chat.types'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
-  error, transcript, filtered, form, canSend, load, select, newChat, send } = useChat()
+  error, transcript, filtered, form, canSend, atLimit, managing, managementError,
+  load, select, newChat, send, manageChat } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
+const dialog = ref<HTMLDialogElement | null>(null)
+const action = ref<{ chat: Chat; kind: 'rename' | 'delete' } | null>(null)
+const chatName = ref('')
+const cannotCreate = computed(() => !auth.isAuthenticated || loading.value || !!historyError.value
+  || sending.value || managing.value || atLimit.value)
+const limitMessage = 'Você atingiu o limite de conversas. Exclua uma para criar outra.'
+
+watch(action, (value) => {
+  if (value) dialog.value?.showModal()
+  else dialog.value?.close()
+}, { flush: 'post' })
+watch(() => auth.usuario?.id, () => { action.value = null })
+
+function openAction(chat: Chat, kind: 'rename' | 'delete') {
+  managementError.value = ''
+  chatName.value = chat.nome
+  action.value = { chat, kind }
+}
+
+function closeAction() {
+  if (!managing.value) action.value = null
+}
+
+async function confirmAction() {
+  const pending = action.value
+  if (!pending) return
+  const name = chatName.value.trim()
+  if (pending.kind === 'rename' && (!name || name.length > CHAT_NAME_LIMIT)) return
+  if (await manageChat(pending.chat, pending.kind === 'rename' ? name : null)) {
+    if (action.value === pending) action.value = null
+  }
+}
+
 const initials = computed(() => (auth.usuario?.nome ?? '').split(' ').filter(Boolean).slice(0, 2)
   .map(part => part[0]).join('').toUpperCase())
 function dateLabel(value: string) {
@@ -40,7 +75,11 @@ function onKeydown(event: KeyboardEvent) {
             <Search :size="16" aria-hidden="true" />
             <input v-model="search" type="search" aria-label="Buscar conversas" placeholder="Buscar conversas recentes..." class="min-w-0 flex-1 bg-transparent text-xs text-neutral-800 outline-none" />
           </label>
-          <button class="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 py-2 text-xs font-medium hover:bg-neutral-50 disabled:opacity-40" :disabled="sending" @click="newChat"><Plus :size="16" /> Nova conversa</button>
+          <button class="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 py-2 text-xs font-medium hover:bg-neutral-50 disabled:opacity-40" :disabled="cannotCreate" @click="newChat"><Plus :size="16" /> Nova conversa</button>
+          <div v-if="auth.isAuthenticated && !loading && !historyError" class="mt-2 text-xs text-neutral-500">
+            <p>{{ chats.length }} de {{ CHAT_LIMIT }} conversas</p>
+            <p v-if="atLimit" class="mt-1">{{ limitMessage }}</p>
+          </div>
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto p-3">
           <p class="px-2 py-2 text-[11px] font-semibold tracking-wider text-neutral-400">RECENTES</p>
@@ -55,12 +94,16 @@ function onKeydown(event: KeyboardEvent) {
             <p class="mt-2 text-xs leading-5">Sua primeira conversa aparecerá aqui quando você enviar uma pergunta.</p>
           </div>
           <p v-else-if="!filtered.length" class="p-3 text-sm text-neutral-500">Nenhuma conversa encontrada.</p>
-          <button v-for="chat in filtered" :key="chat.id" class="mb-1 flex w-full items-center gap-2 rounded-xl border p-3 text-left transition hover:bg-neutral-50 disabled:opacity-50"
-            :class="selected?.id === chat.id ? 'border-neutral-200 bg-neutral-100' : 'border-transparent'"
-            :disabled="sending" :aria-current="selected?.id === chat.id ? 'true' : undefined" @click="select(chat)">
-            <span class="min-w-0 flex-1"><span class="block truncate text-sm" :class="{ 'font-semibold': selected?.id === chat.id }">{{ chat.nome }}</span><span class="mt-1 block text-[11px] text-neutral-400">{{ dateLabel(chat.data_criacao) }}</span></span>
-            <template v-if="selected?.id === chat.id"><span class="rounded-full bg-black px-2 py-0.5 text-[10px] text-white">Ativo</span><ChevronRight :size="16" /></template>
-          </button>
+          <div v-for="chat in filtered" :key="chat.id" class="mb-1 flex items-center gap-1 rounded-xl border pr-2 transition hover:bg-neutral-50"
+            :class="selected?.id === chat.id ? 'border-neutral-200 bg-neutral-100' : 'border-transparent'">
+            <button type="button" class="min-w-0 flex-1 rounded-xl p-3 text-left disabled:opacity-50"
+              :disabled="sending || managing" :aria-current="selected?.id === chat.id ? 'true' : undefined" @click="select(chat)">
+              <span class="block truncate text-sm" :class="{ 'font-semibold': selected?.id === chat.id }">{{ chat.nome }}</span>
+              <span class="mt-1 block text-[11px] text-neutral-500">{{ dateLabel(chat.data_criacao) }}</span>
+            </button>
+            <button type="button" class="icon-button" :disabled="sending || managing || loading" :aria-label="`Renomear ${chat.nome}`" title="Renomear conversa" @click="openAction(chat, 'rename')"><Pencil :size="16" /></button>
+            <button type="button" class="icon-button hover:text-red-700" :disabled="sending || managing || loading" :aria-label="`Excluir ${chat.nome}`" title="Excluir conversa" @click="openAction(chat, 'delete')"><Trash2 :size="16" /></button>
+          </div>
         </div>
       </aside>
       <div class="flex min-h-0 min-w-0 flex-col" :class="{ 'md:col-span-2': !historyOpen }">
@@ -68,7 +111,7 @@ function onKeydown(event: KeyboardEvent) {
           <button v-if="!historyOpen" class="icon-button" aria-label="Abrir histórico" @click="historyOpen = true"><PanelLeftOpen :size="20" /></button>
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-xs text-white">AI</span>
           <div class="min-w-0 flex-1"><h2 class="truncate text-sm font-semibold">{{ selected?.nome ?? 'Fimap Copilot' }}</h2><p class="mt-1 text-xs text-neutral-500">{{ selected ? `Iniciada em ${dateLabel(selected.data_criacao)}` : 'Seu assistente financeiro' }}</p></div>
-          <button v-if="!historyOpen" class="icon-button" :disabled="sending" aria-label="Nova conversa" @click="newChat"><Plus :size="20" /></button>
+          <button v-if="!historyOpen" class="icon-button" :disabled="cannotCreate" aria-label="Nova conversa" :title="atLimit ? limitMessage : 'Nova conversa'" @click="newChat"><Plus :size="20" /></button>
         </header>
         <div :ref="element => { transcript = element as HTMLElement | null }" class="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8" role="log" aria-label="Mensagens da conversa" :aria-busy="sending || loadingMessages">
           <p v-if="loadingMessages" role="status" class="text-center text-sm text-neutral-500">Carregando mensagens...</p>
@@ -86,6 +129,7 @@ function onKeydown(event: KeyboardEvent) {
         <div class="px-4 pb-4 sm:px-8 sm:pb-5">
           <p v-if="!auth.isAuthenticated" class="mb-3 text-center text-xs text-neutral-500">Prévia da tela. Entre na sua conta para enviar mensagens e acessar suas conversas.</p>
           <FormAlert v-if="error" class="mb-3">{{ error }}</FormAlert>
+          <p v-if="!historyOpen && atLimit && !selected" class="mb-3 text-center text-xs text-neutral-500">{{ limitMessage }}</p>
           <form class="flex items-end gap-3 rounded-2xl bg-neutral-100 p-3 shadow-sm" @submit.prevent="send">
             <label for="chat-question" class="sr-only">Pergunte algo sobre suas finanças</label>
             <textarea id="chat-question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
@@ -96,13 +140,36 @@ function onKeydown(event: KeyboardEvent) {
         </div>
       </div>
     </section>
+    <dialog ref="dialog" class="m-auto w-[min(92vw,26rem)] rounded-2xl bg-white p-6 text-neutral-950 shadow-2xl backdrop:bg-neutral-950/40"
+      aria-labelledby="chat-action-title" @cancel.prevent="closeAction">
+      <form v-if="action" @submit.prevent="confirmAction">
+        <h2 id="chat-action-title" class="text-lg font-semibold">{{ action.kind === 'rename' ? 'Renomear conversa' : 'Excluir conversa?' }}</h2>
+        <div v-if="action.kind === 'rename'" class="mt-4">
+          <label for="chat-name" class="block text-sm font-medium">Nome da conversa</label>
+          <input id="chat-name" v-model="chatName" class="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+            :maxlength="CHAT_NAME_LIMIT" :disabled="managing" required autofocus />
+        </div>
+        <p v-else class="mt-2 text-sm text-neutral-600">A conversa “{{ action.chat.nome }}” e suas mensagens serão excluídas permanentemente.</p>
+        <FormAlert v-if="managementError" class="mt-3">{{ managementError }}</FormAlert>
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" class="rounded-xl border border-neutral-200 px-4 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
+            :disabled="managing" @click="closeAction">Cancelar</button>
+          <button type="submit" class="rounded-xl px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            :class="action.kind === 'rename' ? 'bg-black hover:bg-neutral-700' : 'bg-red-700 hover:bg-red-800'"
+            :disabled="managing || (action.kind === 'rename' && !chatName.trim())">
+            {{ action.kind === 'rename' ? (managing ? 'Salvando…' : 'Salvar') : (managing ? 'Excluindo…' : 'Excluir') }}
+          </button>
+        </div>
+      </form>
+    </dialog>
   </div>
 </template>
 
 <style scoped>
 .chat-shell { display: grid; grid-template-columns: minmax(250px, 36%) minmax(0, 1fr); height: max(600px, calc(100dvh - 205px)); }
 .icon-button { padding: 6px; border-radius: 8px; color: #737373; }
-.icon-button:hover { background: #f5f5f5; }
+.icon-button:not(:disabled):hover { background: #f5f5f5; }
+.icon-button:disabled { opacity: 0.4; }
 button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #737373; outline-offset: 3px; }
 @media (max-width: 767px) {
   .chat-shell { grid-template-columns: minmax(0, 1fr); height: auto; min-height: calc(100dvh - 150px); }

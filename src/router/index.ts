@@ -137,6 +137,12 @@ export const router = createRouter({
           meta: { requiresAuth: true, requiresConnection: true },
         },
         {
+          path: 'recomendacoes',
+          name: 'recomendacoes',
+          component: () => import('@/features/recommendations/views/RecommendationsView.vue'),
+          meta: { requiresConnection: false },
+        },
+        {
           path: '/notificacoes',
           name: 'notificacoes',
           component: () => import('@/features/notificacoes/views/NotificacoesView.vue'),

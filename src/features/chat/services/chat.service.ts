@@ -37,6 +37,16 @@ export const chatService = {
     const { data } = await http.get<ChatResponse<ChatMessage[]>>(`${BASE}/listar-chat/${id}/mensagens/${idUsuario}`, { signal })
     return requireSuccess(data).conteudo
   },
+  async rename(id: number, nome: string, signal: AbortSignal): Promise<void> {
+    const { data } = await http.patch<ChatResponse<unknown>>(
+      `${BASE}/atualizar-nome-chat/${id}`, { nome }, { signal },
+    )
+    requireSuccess(data)
+  },
+  async remove(id: number, signal: AbortSignal): Promise<void> {
+    const { data } = await http.delete<ChatResponse<unknown>>(`${BASE}/apagar-chat/${id}`, { signal })
+    requireSuccess(data)
+  },
   async send(id: number, pergunta: string, onEvent: (event: ChatEvent) => void, signal: AbortSignal) {
     const idUsuario = requireUserId()
     const response = await http.post<ReadableStream<Uint8Array>>(`${BASE}/mensagens`, {
