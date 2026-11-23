@@ -6,17 +6,14 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import ErrorState from '@/components/shared/ErrorState.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 import PatrimonyCard from '../components/PatrimonyCard.vue'
-import EvolutionChart from '../components/EvolutionChart.vue'
 import AllocationCard from '../components/AllocationCard.vue'
 import AssetPreviewCard from '../components/AssetPreviewCard.vue'
 import { useInvestmentsData } from '../composables/useInvestmentsData'
-import { useEvolution } from '../composables/useEvolution'
 
 const PREVIEW_COUNT = 4
 
 const router = useRouter()
-const { summary, itemIds, hasAssets, loading, error, partial, reload } = useInvestmentsData()
-const evolution = useEvolution(itemIds)
+const { summary, hasAssets, loading, error, partial, reload } = useInvestmentsData()
 
 const preview = computed(() => summary.value?.assets.slice(0, PREVIEW_COUNT) ?? [])
 </script>
@@ -26,10 +23,7 @@ const preview = computed(() => summary.value?.assets.slice(0, PREVIEW_COUNT) ?? 
     <PageHeader title="Investimento" subtitle="Acompanhe sua carteira e rentabilidade via Open Finance" />
 
     <div v-if="loading" class="flex flex-col gap-6" aria-busy="true">
-      <div class="grid gap-6 lg:grid-cols-[5fr_7fr]">
-        <div class="h-72 animate-pulse rounded-3xl bg-white" />
-        <div class="h-72 animate-pulse rounded-3xl bg-white" />
-      </div>
+      <div class="h-72 animate-pulse rounded-3xl bg-white" />
       <div class="h-60 animate-pulse rounded-3xl bg-white" />
     </div>
 
@@ -47,16 +41,7 @@ const preview = computed(() => summary.value?.assets.slice(0, PREVIEW_COUNT) ?? 
         <button type="button" class="font-medium underline" @click="reload">Recarregar</button>
       </p>
 
-      <div class="grid gap-6 lg:grid-cols-[5fr_7fr]">
-        <PatrimonyCard :summary="summary" />
-        <EvolutionChart
-          v-model:period="evolution.period.value"
-          :points="evolution.points.value"
-          :loading="evolution.loading.value"
-          :error="evolution.error.value"
-          @retry="evolution.reload"
-        />
-      </div>
+      <PatrimonyCard :summary="summary" />
 
       <AllocationCard :groups="summary.groups" />
 
