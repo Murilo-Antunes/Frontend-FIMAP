@@ -37,5 +37,15 @@ export function toApiError(error: unknown): ApiError {
       campos: body?.campos,
     }
   }
+  // Erros lançados pela camada de serviço (por exemplo, resposta 200 fora
+  // do formato esperado) não são erros Axios. Preserve a causa em vez de
+  // escondê-la atrás da mensagem genérica.
+  if (error instanceof Error && error.message.trim()) {
+    return {
+      status: null,
+      codigo: 'ERRO_DESCONHECIDO',
+      mensagem: error.message,
+    }
+  }
   return { status: null, codigo: 'ERRO_DESCONHECIDO', mensagem: GENERIC_MESSAGE }
 }

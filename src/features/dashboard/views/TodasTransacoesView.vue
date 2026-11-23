@@ -9,7 +9,13 @@ const connectionStore = useConnectionStore();
 
 const searchQuery = ref('');
 const date = new Date();
-const currentMonthYear = `${date.toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + date.toLocaleString('pt-BR', { month: 'long' }).slice(1)} ${date.getFullYear()}`;
+function monthYearLabel(monthOffset: number): string {
+  const monthDate = new Date(date.getFullYear(), date.getMonth() - monthOffset, 1);
+  const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
+  return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${monthDate.getFullYear()}`;
+}
+
+const currentMonthYear = monthYearLabel(0);
 
 const selectedPeriod = ref(currentMonthYear);
 const customPeriod = ref({ start: '', end: '' });
@@ -20,7 +26,12 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const transacoes = ref<TransacaoApiItem[]>([]);
 
-const periodOptions = computed(() => [currentMonthYear, 'Setembro 2026', 'Agosto 2026', 'Personalizado']);
+const periodOptions = computed(() => [
+  monthYearLabel(0),
+  monthYearLabel(1),
+  monthYearLabel(2),
+  'Personalizado',
+]);
 
 function formatCurrency(val: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(val || 0));

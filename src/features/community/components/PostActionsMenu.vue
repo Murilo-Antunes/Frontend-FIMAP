@@ -42,7 +42,7 @@ function report(): void {
       <button
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-900 outline-none transition hover:bg-[#f3f3f3] focus-visible:bg-[#f3f3f3]"
+        class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-bold text-neutral-900 outline-none transition hover:bg-[#f3f3f3] focus-visible:bg-[#f3f3f3]"
         @click.stop.prevent="report"
       >
         <Flag class="size-4" aria-hidden="true" />

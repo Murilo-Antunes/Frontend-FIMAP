@@ -17,6 +17,7 @@ export const publicHttp = axios.create(baseConfig)
 http.interceptors.request.use((config) => {
   const token = useSessionTokenStore().accessToken
   if (token) config.headers.set('Authorization', `Bearer ${token}`)
+  else config.headers.delete('Authorization')
   return config
 })
 

@@ -9,6 +9,7 @@ const props = defineProps<{
   modelValue: number | null
   idUsuario: number
   editavel?: boolean
+  permitirEditarCdiManual?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 
 const aberto = ref(false)
 const percentualManualInput = ref<number | null>(null)
+const editandoCdiManual = ref(false)
 const salvandoManual = ref(false)
 const erroManual = ref<string | null>(null)
 
@@ -29,8 +31,19 @@ watch(
   () => contaSelecionada.value?.id,
   () => {
     percentualManualInput.value = null
+    editandoCdiManual.value = false
     erroManual.value = null
   },
+)
+
+watch(
+  () => [contaSelecionada.value?.id, contaSelecionada.value?.percentualCdi] as const,
+  ([, percentualCdi]) => {
+    if (!editandoCdiManual.value && percentualCdi !== null && percentualCdi !== undefined) {
+      percentualManualInput.value = percentualCdi * 100
+    }
+  },
+  { immediate: true },
 )
 
 function selecionar(id: number) {
@@ -52,6 +65,7 @@ async function salvarCdiManual() {
     const percentualCdi = percentualManualInput.value / 100
     await contasRendimentoService.atualizarCdiManual(props.idUsuario, contaSelecionada.value.id, percentualCdi)
     emit('cdi-atualizado', { id: contaSelecionada.value.id, percentualCdi })
+    editandoCdiManual.value = false
   } catch (e) {
     erroManual.value = 'Não foi possível salvar o CDI agora. Tente novamente.'
   } finally {
@@ -118,11 +132,13 @@ async function salvarCdiManual() {
 
     <!-- CDI não encontrado automaticamente: deixa o usuário informar na mão. -->
     <div
-      v-if="contaSelecionada && contaSelecionada.percentualCdi === null"
+      v-if="contaSelecionada && (contaSelecionada.percentualCdi === null || editandoCdiManual)"
       class="mt-2 rounded-xl border border-dashed border-gray-300 bg-white p-3"
     >
       <p class="text-xs text-gray-500">
-        Não conseguimos identificar automaticamente o rendimento dessa conta. Você sabe quanto ela rende?
+        {{ contaSelecionada.percentualCdi === null
+          ? 'Não conseguimos identificar automaticamente o rendimento dessa conta. Você sabe quanto ela rende?'
+          : 'Informe o novo percentual de CDI para esta conexão.' }}
       </p>
       <div class="mt-2 flex items-center gap-2">
         <input
@@ -142,8 +158,26 @@ async function salvarCdiManual() {
         >
           {{ salvandoManual ? 'Salvando…' : 'Salvar' }}
         </button>
+        <button
+          v-if="editandoCdiManual"
+          type="button"
+          :disabled="salvandoManual"
+          class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+          @click="editandoCdiManual = false; erroManual = null"
+        >
+          Cancelar
+        </button>
       </div>
       <p v-if="erroManual" class="mt-1 text-xs text-red-500">{{ erroManual }}</p>
     </div>
+
+    <button
+      v-else-if="contaSelecionada && permitirEditarCdiManual && contaSelecionada.percentualCdi !== null"
+      type="button"
+      class="mt-2 text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
+      @click="editandoCdiManual = true; percentualManualInput = contaSelecionada.percentualCdi * 100"
+    >
+      Editar CDI manual
+    </button>
   </div>
 </template>

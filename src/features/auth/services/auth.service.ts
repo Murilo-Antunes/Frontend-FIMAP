@@ -95,27 +95,17 @@ export const authService = {
    * Verifica o código OTP para redefinição de senha.
    * POST /v1/openfinance/usuario/alterar/verificar-codigo/:id_usuario
    */
-  async verifyPasswordOtp(idUsuario: number, codigo: string): Promise<void> {
+  async resetPassword(idUsuario: number, codigo: string, novaSenha: string): Promise<void> {
     const { data } = await publicHttp.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
       codigo,
+      novaSenha,
     })
     if (!data?.sucesso) {
-      throw new Error(data?.mensagem ?? 'Código inválido.')
+      throw new Error(data?.mensagem ?? 'Não foi possível redefinir a senha.')
     }
   },
 
-  /**
-   * Redefine a senha após OTP verificado.
-   * (Esta função agora será usada apenas para atualizar a senha via updateUsuario)
-   */
-  async updatePassword(idUsuario: number, novaSenha: string): Promise<void> {
-    console.log(`Atualizando senha para usuário ${idUsuario}...`);
-    await this.updateUsuario(idUsuario, { senha: novaSenha } as any)
-    console.log(`Senha atualizada com sucesso para usuário ${idUsuario}.`);
-  },
-
   async updateUsuario(idUsuario: number, payload: Partial<RegisterPayload>): Promise<void> {
-    console.log(`Enviando PATCH para ${BASE}/usuario-update/${idUsuario} com payload:`, payload);
     await http.patch(`${BASE}/usuario-update/${idUsuario}`, payload)
   },
 

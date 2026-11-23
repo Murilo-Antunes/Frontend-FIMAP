@@ -232,8 +232,8 @@ async function confirmar() {
       </div>
 
       <div class="space-y-6">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
+        <div class="grid grid-cols-5 gap-3">
+          <div class="col-span-2 min-w-0">
             <label class="text-xs font-medium tracking-wide text-gray-400">JÁ ECONOMIZADO</label>
             <input
               v-model.number="valorInicio"
@@ -244,12 +244,12 @@ async function confirmar() {
             />
             <p v-if="erros.valorInicio" class="mt-1 text-xs text-red-500">{{ erros.valorInicio }}</p>
           </div>
-          <div>
+          <div class="col-span-3 min-w-0">
             <label class="text-xs font-medium tracking-wide text-gray-400">DATA ALVO</label>
             <input
               v-model="dataAlvo"
               type="month"
-              class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
+              class="mt-1 w-full min-w-0 rounded-xl border border-gray-200 bg-white px-2 py-2.5 text-sm focus:border-gray-400 focus:outline-none"
             />
             <p v-if="erros.dataAlvo" class="mt-1 text-xs text-red-500">{{ erros.dataAlvo }}</p>
           </div>
