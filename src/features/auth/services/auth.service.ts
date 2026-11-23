@@ -50,9 +50,6 @@ export const authService = {
     if (!data?.sucesso || !data.usuario) {
       throw new Error(data?.mensagem ?? 'Credenciais inválidas.')
     }
-    if (typeof data.access_token !== 'string' || !data.access_token.trim()) {
-      throw new Error('O servidor não retornou o token de acesso.')
-    }
     return data
   },
 

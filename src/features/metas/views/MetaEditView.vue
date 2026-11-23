@@ -258,6 +258,7 @@ async function excluir() {
             :contas="contas"
             :id-usuario="idUsuarioAtual??0"
             :editavel="false"
+            :permitir-editar-cdi-manual="true"
             @cdi-atualizado="aoAtualizarCdi"
           />
         </div>
