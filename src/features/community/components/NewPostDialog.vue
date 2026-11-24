@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { ArrowLeft, Loader2, SquarePen } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, Paperclip, SquarePen, X } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSocialProfileStore } from '@/stores/social-profile.store'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -9,6 +9,8 @@ import type { Post } from '../types/community.types'
 import UserAvatar from './UserAvatar.vue'
 
 const MAX_LENGTH = 2000
+const MAX_MEDIA = 10
+const MAX_FILE_SIZE = 25 * 1024 * 1024
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{
@@ -20,13 +22,23 @@ const auth = useAuthStore()
 const social = useSocialProfileStore()
 
 const text = ref('')
+const media = ref<File[]>([])
+const mediaInput = ref<HTMLInputElement | null>(null)
 const sending = ref(false)
 const errorMessage = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const dialogRef = ref<HTMLElement | null>(null)
 
 const perfil = computed(() => social.perfil)
-const canSubmit = computed(() => text.value.trim().length > 0 && !sending.value)
+const canSubmit = computed(() => (text.value.trim().length > 0 || media.value.length > 0) && !sending.value)
+const mediaPreviews = computed(() => media.value.map((file) => ({
+  url: URL.createObjectURL(file),
+  video: file.type.startsWith('video/'),
+})))
+
+watch(mediaPreviews, (_, previous) => {
+  previous?.forEach((preview) => URL.revokeObjectURL(preview.url))
+})
 
 function close(): void {
   if (sending.value) return
@@ -45,6 +57,7 @@ watch(
   async (isOpen) => {
     if (!isOpen) return
     text.value = ''
+    media.value = []
     errorMessage.value = ''
     await nextTick()
     autoGrow()
@@ -54,6 +67,25 @@ watch(
 
 watch(text, () => void nextTick(autoGrow))
 
+function addMedia(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const selected = Array.from(input.files ?? [])
+  input.value = ''
+  const accepted: File[] = []
+  for (const file of selected) {
+    const validType = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'].includes(file.type)
+    if (validType && file.size <= MAX_FILE_SIZE && media.value.length + accepted.length < MAX_MEDIA) accepted.push(file)
+  }
+  media.value = [...media.value, ...accepted]
+  errorMessage.value = selected.length !== accepted.length
+    ? `Anexe até ${MAX_MEDIA} arquivos JPG, PNG, WebP ou MP4, com até 25 MB cada.`
+    : ''
+}
+
+function removeMedia(index: number): void {
+  media.value = media.value.filter((_, current) => current !== index)
+}
+
 async function submit(): Promise<void> {
   if (!canSubmit.value) return
   sending.value = true
@@ -61,7 +93,16 @@ async function submit(): Promise<void> {
 
   try {
     const idUsuario = auth.usuario?.id??0
-    const created = await postService.create(idUsuario, text.value.trim())
+    let created = await postService.create(text.value.trim(), media.value)
+    // Algumas respostas de criação não incluem as URLs já persistidas; busca a
+    // versão canônica antes de inserir o post no feed.
+    if (media.value.length && !created.conteudo?.some((item) => item.tipo === 'foto' || item.tipo === 'video')) {
+      try {
+        created = await postService.getPost(created.id, idUsuario)
+      } catch {
+        // O post já foi criado; mantém a resposta de criação caso a leitura falhe.
+      }
+    }
 
     // Se o backend não embutir autor/contagens, completa com o perfil social do usuário.
     const post: Post = {
@@ -88,7 +129,7 @@ async function submit(): Promise<void> {
   }
 }
 
-const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled])'
+const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled])'
 
 /** Esc fecha; Ctrl/Cmd+Enter posta; Tab fica preso no diálogo. */
 function onKeydown(event: KeyboardEvent): void {
@@ -164,6 +205,16 @@ function onKeydown(event: KeyboardEvent): void {
           </div>
         </div>
 
+        <div v-if="media.length" class="flex gap-3 overflow-x-auto px-5 pb-4 sm:px-6">
+          <div v-for="(preview, index) in mediaPreviews" :key="`${media[index]?.name}-${index}`" class="relative size-24 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+            <video v-if="preview.video" :src="preview.url" muted playsinline class="size-full object-cover" />
+            <img v-else :src="preview.url" alt="Prévia da mídia" class="size-full object-cover" />
+            <button type="button" :aria-label="`Remover mídia ${index + 1}`" class="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white" @click="removeMedia(index)">
+              <X class="size-3" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
         <p v-if="errorMessage" role="alert" class="px-6 pb-3 text-sm text-red-600">{{ errorMessage }}</p>
 
         <footer class="flex items-center justify-between gap-3 border-t border-neutral-200 px-5 py-3 sm:px-6">
@@ -176,6 +227,16 @@ function onKeydown(event: KeyboardEvent): void {
           </span>
           <button
             type="button"
+            aria-label="Anexar imagens ou vídeos"
+            :disabled="sending || media.length >= MAX_MEDIA"
+            class="mr-auto rounded-full p-2 text-neutral-600 transition hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+            @click="mediaInput?.click()"
+          >
+            <Paperclip class="size-5" aria-hidden="true" />
+          </button>
+          <div class="flex items-center gap-3">
+          <button
+            type="button"
             :disabled="!canSubmit"
             class="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2"
             @click="submit"
@@ -184,7 +245,9 @@ function onKeydown(event: KeyboardEvent): void {
             <SquarePen v-else class="size-4" aria-hidden="true" />
             postar
           </button>
+          </div>
         </footer>
+        <input ref="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4" multiple class="sr-only" :disabled="sending || media.length >= MAX_MEDIA" @change="addMedia" />
       </div>
     </div>
   </Teleport>

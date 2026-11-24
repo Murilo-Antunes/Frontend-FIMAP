@@ -51,13 +51,18 @@ export const postService = {
   },
 
   /**
-   * POST /criar — existente. Body: { id_usuario, conteudo: [{ tipo: 'texto', valor }] }.
-   * Retorna o post criado (com autor/contagens se o backend v-social estiver aplicado).
+   * POST /criar. Os nomes dos campos multipart seguem o contrato do backend.
    */
-  async create(idUsuario: number, texto: string): Promise<Post> {
+  async create(texto: string, midias: File[] = []): Promise<Post> {
+    const body = new FormData()
+    if (texto) body.append('conteudo[texto]', texto)
+    midias.forEach((arquivo) => {
+      body.append(arquivo.type === 'video/mp4' ? 'conteudo[midia]' : 'conteudo[foto]', arquivo)
+    })
+
     const { data } = await http.post<{ sucesso: boolean; mensagem: string; post: Partial<Post> & Pick<Post, 'id'> }>(
       communityEndpoints.createPost,
-      { id_usuario: idUsuario, conteudo: [{ tipo: 'texto', valor: texto }] },
+      body,
     )
     return data.post as Post
   },
