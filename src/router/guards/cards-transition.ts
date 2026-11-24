@@ -2,10 +2,6 @@ import { nextTick } from 'vue'
 import type { RouteLocationNormalized, Router } from 'vue-router'
 import '@/features/cards/styles/cards-transition.css'
 
-interface DocumentComViewTransition extends Document {
-  startViewTransition?: (atualizar: () => Promise<void> | void) => unknown
-}
-
 const ROTAS_DE_CARTAO = new Set(['cards', 'card-detail'])
 
 /** Só anima ao ir entre "Selecionar cartão" e "Detalhe do cartão" (nos dois sentidos). */
@@ -29,7 +25,7 @@ function ehTransicaoDeCartao(para: RouteLocationNormalized, de: RouteLocationNor
  */
 export function setupCardsTransition(router: Router): void {
   if (typeof document === 'undefined') return
-  const doc = document as DocumentComViewTransition
+  const doc = document
   if (typeof doc.startViewTransition !== 'function') return
 
   const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)')

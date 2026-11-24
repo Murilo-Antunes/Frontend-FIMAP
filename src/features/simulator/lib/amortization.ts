@@ -95,7 +95,7 @@ const balanceAt = (schedule: Schedule, month: number): number => schedule.saldoP
  * CET efetivo (definição usada na tela): juros pagos ÷ saldo inicial ÷ prazo original em anos.
  * É uma métrica comparativa do custo do crédito sobre o principal, não o CET regulamentar.
  */
-export function calculateAmortization(input: AmortizationInput): AmortizationResult | null {
+export function calculateAmortization(input: AmortizationInput, interval: 1 | 12 = 12): AmortizationResult | null {
   if (!isValid(input)) return null
 
   const { saldoDevedor, prazoMeses, sistema, modalidade } = input
@@ -108,13 +108,13 @@ export function calculateAmortization(input: AmortizationInput): AmortizationRes
   const anosContrato = prazoMeses / 12
   const cet = (juros: number) => (juros / saldoDevedor / anosContrato) * 100
 
-  const anos = Math.ceil(prazoMeses / 12)
+  const lastMonth = Math.ceil(prazoMeses / interval) * interval
   const serie: AmortizationResult['serie'] = []
-  for (let ano = 0; ano <= anos; ano++) {
+  for (let month = 0; month <= lastMonth; month += interval) {
     serie.push({
-      ano,
-      comAporte: balanceAt(accelerated, ano * 12),
-      semAporte: balanceAt(original, ano * 12),
+      ano: month / 12,
+      comAporte: balanceAt(accelerated, month),
+      semAporte: balanceAt(original, month),
     })
   }
 

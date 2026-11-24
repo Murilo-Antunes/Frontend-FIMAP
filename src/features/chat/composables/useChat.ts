@@ -4,8 +4,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import { useZodForm } from '@/composables/useZodForm'
 import { chatMessageSchema } from '../schemas/chat.schemas'
+import type { FinancialAction } from '../schemas/financial-action.schemas'
 import { chatService } from '../services/chat.service'
 import type { Chat, ChatMessage } from '../types/chat.types'
+
+export const CHAT_LIMIT = 20
+export const CHAT_NAME_LIMIT = 45
 
 export function useChat() {
   const auth = useAuthStore()
@@ -17,6 +21,10 @@ export function useChat() {
   const loading = ref(false)
   const loadingMessages = ref(false)
   const sending = ref(false)
+  const confirmingFinancialAction = ref<string | null>(null)
+  const financialActionError = ref<{ id: string; message: string } | null>(null)
+  const managing = ref(false)
+  const managementError = ref('')
   const historyError = ref('')
   const error = ref('')
   const transcript = ref<HTMLElement | null>(null)
@@ -26,6 +34,7 @@ export function useChat() {
   let detail: AbortController | null = null
   let generation = 0
   const selected = computed(() => chats.value.find(chat => chat.id === selectedId.value))
+  const atLimit = computed(() => chats.value.length >= CHAT_LIMIT)
   const filtered = computed(() => chats.value.filter(chat => chat.nome.toLocaleLowerCase('pt-BR')
     .includes(search.value.toLocaleLowerCase('pt-BR'))))
   const describeError = (cause: unknown) => axios.isAxiosError(cause)
@@ -33,7 +42,7 @@ export function useChat() {
     : cause instanceof Error ? cause.message : toApiError(cause).mensagem
 
   async function load() {
-    if (!auth.isAuthenticated) return
+    if (!auth.isAuthenticated || loading.value || managing.value) return
     const current = generation
     loading.value = true
     historyError.value = ''
@@ -48,23 +57,52 @@ export function useChat() {
   }
 
   function newChat() {
-    if (sending.value) return
+    if (sending.value || confirmingFinancialAction.value) return
     detail?.abort()
     selectedId.value = null
     messages.value = []
     draft.value = ''
     error.value = ''
+    financialActionError.value = null
     loadingMessages.value = false
     form.clearErrors()
   }
 
+  async function manageChat(chat: Chat, name: string | null): Promise<boolean> {
+    if (!auth.isAuthenticated || sending.value || confirmingFinancialAction.value || loading.value || managing.value) return false
+    const current = generation
+    const signal = session.signal
+    managing.value = true
+    managementError.value = ''
+    try {
+      if (name === null) await chatService.remove(chat.id, signal)
+      else await chatService.rename(chat.id, name, signal)
+      if (current !== generation || signal.aborted) return false
+
+      if (name === null) {
+        chats.value = chats.value.filter(item => item.id !== chat.id)
+        cache.delete(chat.id)
+        if (selectedId.value === chat.id) newChat()
+      } else {
+        chats.value = chats.value.map(item => item.id === chat.id ? { ...item, nome: name } : item)
+      }
+      return true
+    } catch (cause) {
+      if (current === generation && !signal.aborted) managementError.value = describeError(cause)
+      return false
+    } finally {
+      if (current === generation) managing.value = false
+    }
+  }
+
   async function select(chat: Chat) {
-    if (!auth.isAuthenticated || sending.value) return
+    if (!auth.isAuthenticated || sending.value || confirmingFinancialAction.value) return
     detail?.abort()
     const controller = new AbortController()
     detail = controller
     selectedId.value = chat.id
     error.value = ''
+    financialActionError.value = null
     draft.value = ''
     form.clearErrors()
     messages.value = cache.get(chat.id) ?? []
@@ -87,20 +125,55 @@ export function useChat() {
     }
   }
 
+  async function confirmFinancialAction(action: FinancialAction) {
+    const id = selectedId.value
+    if (id === null || !canSend.value || action.status !== 'pronta') return
+    const current = generation
+    const signal = session.signal
+    const isCurrent = () => current === generation && !signal.aborted && selectedId.value === id
+    confirmingFinancialAction.value = action.id
+    financialActionError.value = null
+
+    try {
+      const saved = await chatService.confirmFinancialAction(id, action, signal)
+      if (!isCurrent()) return
+      messages.value = messages.value.map(message => message.acoes_financeiras ? {
+        ...message,
+        acoes_financeiras: message.acoes_financeiras.map(item => item.id === saved.id && item.versao === saved.versao ? saved : item),
+      } : message)
+      cache.set(id, messages.value)
+    } catch (cause) {
+      if (!isCurrent()) return
+      if (axios.isAxiosError(cause) && cause.response?.status === 409) {
+        try {
+          const result = await chatService.messages(id, signal)
+          if (!isCurrent()) return
+          messages.value = result
+          cache.set(id, result)
+          financialActionError.value = { id: action.id, message: 'A proposta mudou. Revise os dados atualizados antes de salvar.' }
+        } catch (refreshError) {
+          if (isCurrent()) financialActionError.value = { id: action.id, message: describeError(refreshError) }
+        }
+      } else {
+        financialActionError.value = { id: action.id, message: describeError(cause) }
+      }
+    } finally {
+      if (isCurrent()) confirmingFinancialAction.value = null
+    }
+  }
+
   async function send() {
-    if (!auth.isAuthenticated || sending.value || loading.value || loadingMessages.value || historyError.value) return
-    // Não envie sem conhecer o histórico de uma conversa existente.
-    if (selectedId.value !== null && !cache.has(selectedId.value)) return
+    if (!canSend.value) return
     const data = form.validate({ pergunta: draft.value })
     if (!data) return
     const current = generation
     const signal = session.signal
-    console.log(signal)
     sending.value = true
     error.value = ''
+    financialActionError.value = null
     try {
       if (selectedId.value === null) {
-        const chat = await chatService.create(data.pergunta.slice(0, 45), signal)
+        const chat = await chatService.create(data.pergunta.slice(0, CHAT_NAME_LIMIT), signal)
         if (current !== generation) return
         chats.value.unshift(chat)
         selectedId.value = chat.id
@@ -111,6 +184,7 @@ export function useChat() {
       messages.value = [...previous, { papel: 0, conteudo: data.pergunta }, { papel: 1, conteudo: '' }]
       draft.value = ''
       let completed = false
+      let financialActions: FinancialAction[] | undefined
       try {
         await chatService.send(id, data.pergunta, event => {
           if (current !== generation) return
@@ -118,9 +192,17 @@ export function useChat() {
             const answer = messages.value[messages.value.length - 1]
             if (answer) answer.conteudo += event.conteudo
           }
-          if (event.tipo === 'fim') completed = true
+          if (event.tipo === 'fim') {
+            if (event.id_chat !== id) throw new Error('O servidor retornou uma resposta de outra conversa.')
+            completed = true
+            financialActions = event.acoes_financeiras
+          }
         }, signal)
-        if (current === generation && completed) cache.set(id, [...messages.value])
+        if (current === generation && completed) {
+          const answer = messages.value.at(-1)
+          if (answer && financialActions) answer.acoes_financeiras = financialActions
+          cache.set(id, [...messages.value])
+        }
       } catch (cause) {
         if (current === generation) {
           // Um trecho recebido não comprova que o backend salvou o par.
@@ -131,7 +213,13 @@ export function useChat() {
         throw cause
       }
     } catch (cause) {
-      if (current === generation && !signal.aborted) error.value = describeError(cause)
+      if (current === generation && !signal.aborted) {
+        error.value = describeError(cause)
+        if (selectedId.value === null && axios.isAxiosError(cause)
+          && cause.response?.status === 409 && cause.response.data?.codigo === 'CHAT_LIMITE_USUARIO') {
+          await load()
+        }
+      }
     } finally {
       if (current === generation) sending.value = false
     }
@@ -151,17 +239,35 @@ export function useChat() {
     error.value = ''
     historyError.value = ''
     sending.value = false
+    confirmingFinancialAction.value = null
+    financialActionError.value = null
+    managing.value = false
+    managementError.value = ''
+    loading.value = false
     loadingMessages.value = false
     if (id) void load()
   }, { immediate: true })
-  watch(() => messages.value.map(message => message.conteudo).join(''), async () => {
+  const lastAction = computed(() => {
+    const action = messages.value.at(-1)?.acoes_financeiras?.[0]
+    return action ? `${action.id}-${action.versao}` : undefined
+  })
+  watch([() => messages.value.map(message => message.conteudo).join(''), lastAction], async ([, action], [, previousAction]) => {
     await nextTick()
-    transcript.value?.scrollTo({ top: transcript.value.scrollHeight, behavior: 'smooth' })
+    const element = transcript.value
+    if (!element) return
+    const card = action && action !== previousAction ? element.querySelector(`[data-financial-action="${action}"]`) : null
+    const message = card?.closest('[data-chat-message]')
+    const top = message
+      ? element.scrollTop + message.getBoundingClientRect().top - element.getBoundingClientRect().top - 16
+      : element.scrollHeight
+    element.scrollTo({ top, behavior: 'smooth' })
   })
   onScopeDispose(() => { session.abort(); detail?.abort() })
 
-  const canSend = computed(() => auth.isAuthenticated && !sending.value && !loading.value && !loadingMessages.value && !historyError.value
-    && (selectedId.value === null || cache.has(selectedId.value)))
+  const canSend = computed(() => auth.isAuthenticated && !sending.value && !managing.value && !confirmingFinancialAction.value
+    && !loading.value && !loadingMessages.value && !historyError.value
+    && (selectedId.value === null ? !atLimit.value : cache.has(selectedId.value)))
   return { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
-    error, transcript, filtered, form, canSend, load, select, newChat, send }
+    error, transcript, filtered, form, canSend, atLimit, managing, managementError,
+    confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat }
 }

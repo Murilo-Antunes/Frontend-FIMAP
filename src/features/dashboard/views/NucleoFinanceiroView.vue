@@ -3,7 +3,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useConnectionStore } from '@/stores/connection.store';
 import { financeService } from '../services/finance.service';
 import type { SaldoNucleoData, CartoesData, ContasConectadasData, InvestimentosData, EmprestimosData } from '../types/finance.types';
-import { Eye, EyeOff, TrendingUp, Sparkles, CreditCard, Landmark, Handshake, Lock, Check } from 'lucide-vue-next';
+import { Eye, EyeOff, TrendingUp, CreditCard, Landmark, Handshake, Lock, Check } from 'lucide-vue-next';
+import RecommendationCard from '../components/RecommendationCard.vue';
 
 const connectionStore = useConnectionStore();
 
@@ -115,9 +116,9 @@ onMounted(async () => {
 
     <div v-else class="space-y-8">
       <!-- Top Section Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 gap-6 lg:has-[>aside]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <!-- Patrimônio Card (2 colunas) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative space-y-4">
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative space-y-4">
           <div class="flex items-center justify-between text-gray-400">
             <span class="text-xs font-semibold tracking-wider uppercase">Patrimônio sob Gestão</span>
             <button @click="showValues = !showValues" class="hover:text-gray-600">
@@ -158,21 +159,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Diagnóstico Card (1 coluna) -->
-        <div class="bg-black text-white rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-          <div class="flex items-center space-x-2 text-gray-300">
-            <Sparkles class="w-4 h-4" />
-            <span class="text-xs font-semibold tracking-wider uppercase">Diagnóstico do Núcleo</span>
-          </div>
-          <p class="text-xs text-gray-300 leading-relaxed">
-            Seu índice de liquidez está excelente com base nas contas correntes e aplicações ativas sincronizadas.
-          </p>
-          <div>
-            <span class="inline-block bg-white/20 text-white font-bold text-sm px-3 py-1 rounded-md">
-              A+
-            </span>
-          </div>
-        </div>
+        <RecommendationCard area="nucleo" />
       </div>
 
       <!-- Seção Categorias do Núcleo -->

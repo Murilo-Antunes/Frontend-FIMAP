@@ -73,9 +73,10 @@ export const SIDEBAR_NAV: NavItem[] = [
   },
   {
     key: 'opportunities',
-    label: 'Histórico de Oportunidades',
+    label: 'Recomendações',
+    to: '/recomendacoes',
     icon: Sparkles,
-    description: 'Insights de economia gerados',
+    description: 'Histórico de recomendações da IA',
     highlight: true,
     badge: 'IA',
   },

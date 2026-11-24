@@ -99,7 +99,7 @@ function createBaseContours(): Contour[] {
   const result: Contour[] = []
   let id = 0
 
-  terrains.forEach((terrain, terrainIndex) => {
+  terrains.forEach((terrain) => {
     for (let level = 1; level <= CONTOURS_PER_TERRAIN; level++) {
       const scale = level / CONTOURS_PER_TERRAIN
 

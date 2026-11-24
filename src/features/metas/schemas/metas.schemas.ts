@@ -7,7 +7,7 @@ export const CATEGORIA_NOVA = 'nova' as const
 export const metaFormSchema = z
   .object({
     categoriaId: z.union([z.number().int().positive(), z.literal(CATEGORIA_NOVA)], {
-      required_error: 'Selecione uma categoria',
+      error: issue => issue.input == null ? 'Selecione uma categoria' : undefined,
     }),
     // Sem .min(2) aqui de propósito: esse campo só importa quando categoriaId === CATEGORIA_NOVA.
     // Com categoria padrão, o ref fica como string vazia (não undefined), e .optional() só libera
@@ -25,14 +25,14 @@ export const metaFormSchema = z
       .max(100, 'Nome muito longo'),
     descricao: z.string().trim().max(2000, 'Descrição muito longa').optional().or(z.literal('')),
     valorInicio: z.coerce
-      .number({ invalid_type_error: 'Informe um valor' })
+      .number({ error: 'Informe um valor' })
       .min(0, 'O valor não pode ser negativo'),
     dataAlvo: z.string().min(1, 'Selecione a data alvo'), // formato "YYYY-MM"
     aporteMensal: z.coerce
-      .number({ invalid_type_error: 'Informe um valor' })
+      .number({ error: 'Informe um valor' })
       .min(0, 'O valor não pode ser negativo'),
     valorDesejado: z.coerce
-      .number({ invalid_type_error: 'Informe um valor' })
+      .number({ error: 'Informe um valor' })
       .positive('A meta final deve ser maior que zero'),
     idContaVinculada: z.number().int().positive().nullable().optional(),
   })

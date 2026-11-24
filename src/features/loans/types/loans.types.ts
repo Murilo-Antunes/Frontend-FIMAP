@@ -51,25 +51,31 @@ export interface LoanPaidSummaryRaw {
   numeroFinal: number
 }
 
+interface LoanPaidInstallmentsApi {
+  itens: LoanInstallmentRaw[]
+  limite: number
+  total: number
+  temMais: boolean
+}
+
 /** Formato de GET /v1/openfinance/financeiro/emprestimos/:itemId/:emprestimoId/detalhe */
 export interface LoanDetailApiResponse {
   atualizando: boolean
   emprestimo?: LoanRaw
-  resumo: {
+  totalParcelas?: number
+  pendentes?: LoanInstallmentRaw[]
+  amortizadas?: LoanInstallmentRaw[]
+  pagas?: LoanPaidInstallmentsApi
+  resumo?: {
     totalParcelas: number
     parcelasPagas: number
     parcelasRestantes: number
     parcelasPagasDetalhadas: number
   }
-  parcelas: {
+  parcelas?: {
     pendentes: LoanInstallmentRaw[]
     amortizadas: LoanInstallmentRaw[]
-    pagas: {
-      itens: LoanInstallmentRaw[]
-      limite: number
-      total: number
-      temMais: boolean
-    }
+    pagas: LoanPaidInstallmentsApi
   }
 }
 

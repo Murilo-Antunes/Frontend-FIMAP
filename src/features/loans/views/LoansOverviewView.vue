@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown } from 'lucide-vue-next'
 import { useConnectionStore } from '@/stores/connection.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import { loansService } from '../services/loans.service'

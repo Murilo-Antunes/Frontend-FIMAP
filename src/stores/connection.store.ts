@@ -82,9 +82,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // Trocou de usuário ou saiu: descarta as conexões do anterior
   watch(
     () => auth.usuario?.id,
-    (newId, oldId) => {
-      reset()
-    },
+    reset,
     { flush: 'sync' },
   )
 

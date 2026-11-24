@@ -8,7 +8,6 @@ import TextField from '@/components/shared/TextField.vue'
 import { useZodForm } from '@/composables/useZodForm'
 import { toApiError } from '@/lib/api/types/api-error'
 import { useAuthStore } from '@/stores/auth.store'
-import { useConnectionStore } from '@/stores/connection.store'
 import { usePasswordChangeStore } from '@/stores/password-change.store'
 import { passwordService } from '@/features/settings/services/password.service'
 import { authService } from '../services/auth.service'
@@ -21,7 +20,6 @@ const route = useRoute()
 const idUsuario = Number(route.params.id)
 
 const authStore = useAuthStore()
-const connectionStore = useConnectionStore()
 const passwordChange = usePasswordChangeStore()
 
 // Veio de Configurações > Alterar Senha com a senha atual já confirmada: pula o OTP.
