@@ -16,6 +16,8 @@ import {
   cancelarSolicitacao,
   deixarDeSeguir,
   jaSegue,
+  listarSeguidores,
+  listarSeguindo,
   listarComentariosPorUsuario,
   listarPostsPorUsuario,
   seguir,
@@ -91,6 +93,16 @@ async function carregar(username: string) {
       return
     }
 
+    // Os totais do perfil vêm das listas atuais de relacionamento.
+    const [seguidores, seguindoLista] = await Promise.all([
+      listarSeguidores(dadosPerfil.id),
+      listarSeguindo(dadosPerfil.id),
+    ])
+    perfil.value = {
+      ...dadosPerfil,
+      total_seguidores: Array.isArray(seguidores) ? seguidores.length : dadosPerfil.total_seguidores,
+      total_seguindo: Array.isArray(seguindoLista) ? seguindoLista.length : dadosPerfil.total_seguindo,
+    }
     const [badgesUsuario, todasBadges, resultadoRespostas] = await Promise.all([
       buscarBadgesUsuario(dadosPerfil.id),
       buscarTodasBadges(),
@@ -132,6 +144,12 @@ async function alternarSeguir() {
       await deixarDeSeguir(auth.usuario.id, perfil.value.id)
     } else {
       await seguir(auth.usuario.id, perfil.value.id)
+    }
+    // Atualiza a contagem do perfil aberto imediatamente; ao abrir o perfil
+    // novamente, os totais sÃ£o carregados das listas do backend.
+    perfil.value = {
+      ...perfil.value,
+      total_seguidores: Math.max(0, Number(perfil.value.total_seguidores ?? 0) + (anterior ? -1 : 1)),
     }
   } catch {
     seguindo.value = anterior

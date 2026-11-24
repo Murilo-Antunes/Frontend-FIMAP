@@ -15,6 +15,8 @@ import {
   listarPostsInativos,
   listarPostsPorUsuario,
   listarPostsSalvos,
+  listarSeguidores,
+  listarSeguindo,
 } from '../services/profile.service'
 import type { AbaPerfil, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
@@ -67,11 +69,13 @@ async function carregarPerfil() {
   carregandoPerfil.value = true
   erroPerfil.value = null
   try {
-    const [dadosPerfil, badgesUsuario, todasBadges, destaques] = await Promise.all([
+    const [dadosPerfil, badgesUsuario, todasBadges, destaques, seguidores, seguindoLista] = await Promise.all([
       buscarPerfilPorId(idUsuario.value),
       buscarBadgesUsuario(idUsuario.value),
       buscarTodasBadges(),
       buscarIdsBadgesDestaque(idUsuario.value),
+      listarSeguidores(idUsuario.value),
+      listarSeguindo(idUsuario.value),
     ])
 
     if (!dadosPerfil?.id) {
@@ -79,7 +83,11 @@ async function carregarPerfil() {
       return
     }
 
-    perfil.value = dadosPerfil
+    perfil.value = {
+      ...dadosPerfil,
+      total_seguidores: Array.isArray(seguidores) ? seguidores.length : dadosPerfil.total_seguidores,
+      total_seguindo: Array.isArray(seguindoLista) ? seguindoLista.length : dadosPerfil.total_seguindo,
+    }
     minhasBadges.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
     totalBadgesDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
     idsDestaque.value = Array.isArray(destaques) ? destaques : []
