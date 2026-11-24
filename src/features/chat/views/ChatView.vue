@@ -213,7 +213,7 @@ function adjustFinancialAction(proposal: FinancialAction) {
 .icon-button { padding: 6px; border-radius: 8px; color: #737373; }
 .icon-button:not(:disabled):hover { background: #f5f5f5; }
 .icon-button:disabled { opacity: 0.4; }
-button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #737373; outline-offset: 3px; }
+button:focus-visible, input:focus-visible { outline: 2px solid #737373; outline-offset: 3px; }
 @media (max-width: 767px) {
   .chat-shell { grid-template-columns: minmax(0, 1fr); height: auto; min-height: calc(100dvh - 150px); }
   .chat-shell > aside { max-height: 320px; }
