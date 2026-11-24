@@ -12,7 +12,6 @@ import {
   buscarPerfilPorId,
   buscarTodasBadges,
   listarComentariosPorUsuario,
-  listarPostsInativos,
   listarPostsPorUsuario,
   listarPostsSalvos,
   listarSeguidores,
@@ -36,12 +35,10 @@ const ABAS: { id: AbaPerfil; label: string }[] = [
   { id: 'publicacoes', label: 'Publicações' },
   { id: 'respostas', label: 'Respostas' },
   { id: 'salvos', label: 'Salvos' },
-  { id: 'arquivados', label: 'Arquivados' },
 ]
 
 const abaAtiva = ref<AbaPerfil>('publicacoes')
 const posts = ref<Post[]>([])
-const arquivados = ref<Post[]>([])
 const salvos = ref<Post[]>([])
 const respostas = ref<Awaited<ReturnType<typeof listarComentariosPorUsuario>>['comentarios']>([])
 const totalRespostas = ref(0)
@@ -60,8 +57,7 @@ const postsMaisRespostas = computed(() => posts.value.length + totalRespostas.va
 function contagem(aba: AbaPerfil) {
   if (aba === 'publicacoes') return posts.value.length
   if (aba === 'respostas') return totalRespostas.value
-  if (aba === 'salvos') return salvos.value.length
-  return arquivados.value.length
+  return salvos.value.length
 }
 
 async function carregarPerfil() {
@@ -114,9 +110,6 @@ async function carregarAba(aba: AbaPerfil) {
     } else if (aba === 'salvos') {
       const resultado = await listarPostsSalvos(idUsuario.value)
       salvos.value = Array.isArray(resultado) ? resultado : []
-    } else if (aba === 'arquivados') {
-      const resultado = await listarPostsInativos(idUsuario.value)
-      arquivados.value = Array.isArray(resultado) ? resultado : []
     }
   } catch (e) {
     console.error(`Erro ao carregar aba "${aba}":`, e)
@@ -132,10 +125,9 @@ async function carregarContagensAbas() {
   const resultados = await Promise.allSettled([
     listarComentariosPorUsuario(idUsuario.value),
     listarPostsSalvos(idUsuario.value),
-    listarPostsInativos(idUsuario.value),
   ])
 
-  const [resultadoRespostas, resultadoSalvos, resultadoArquivados] = resultados
+  const [resultadoRespostas, resultadoSalvos] = resultados
 
   if (resultadoRespostas.status === 'fulfilled') {
     respostas.value = Array.isArray(resultadoRespostas.value.comentarios)
@@ -148,13 +140,9 @@ async function carregarContagensAbas() {
     salvos.value = Array.isArray(resultadoSalvos.value) ? resultadoSalvos.value : []
   }
 
-  if (resultadoArquivados.status === 'fulfilled') {
-    arquivados.value = Array.isArray(resultadoArquivados.value) ? resultadoArquivados.value : []
-  }
-
   resultados.forEach((resultado, index) => {
     if (resultado.status === 'rejected') {
-      console.error(`Erro ao carregar contagem da aba ${['respostas', 'salvos', 'arquivados'][index]}:`, resultado.reason)
+      console.error(`Erro ao carregar contagem da aba ${['respostas', 'salvos'][index]}:`, resultado.reason)
     }
   })
 }
@@ -332,12 +320,6 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div v-else class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PostCard v-for="post in arquivados" :key="post.id" :post="post" />
-            <p v-if="!arquivados.length" class="col-span-full text-sm text-neutral-500">
-              Nenhuma publicação arquivada.
-            </p>
-          </div>
         </section>
       </div>
     </div>

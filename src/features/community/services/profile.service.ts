@@ -102,11 +102,6 @@ export async function listarPostsPorUsuario(idUsuario: number, idVisualizador?: 
   }))
 }
 
-export async function listarPostsInativos(idUsuario: number): Promise<Post[]> {
-  const { data } = await http.get(`${BASE_POSTS}/inativos/${idUsuario}`)
-  return data.posts ?? data
-}
-
 export async function listarComentariosPorUsuario(idUsuario: number) {
   const { data } = await http.get(`${BASE_COMENTARIOS}/buscar-comentario/usuario/${idUsuario}`)
   return { quantidade: data.quantidade ?? 0, comentarios: data.comentarios ?? [] }
