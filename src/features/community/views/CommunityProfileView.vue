@@ -164,6 +164,13 @@ function selecionarAba(aba: AbaPerfil) {
   carregarAba(aba)
 }
 
+function atualizarPostSalvo(idPost: number, salvo: boolean) {
+  posts.value = posts.value.map((post) => post.id === idPost ? { ...post, salvo } : post)
+  salvos.value = salvo
+    ? salvos.value
+    : salvos.value.filter((post) => post.id !== idPost)
+}
+
 function abrirPostDaResposta(idPost: number) {
   if (!idPost) return
   void router.push({ name: 'community-post', params: { id: idPost } })
@@ -295,7 +302,7 @@ onMounted(async () => {
           </div>
 
           <div v-else-if="abaAtiva === 'publicacoes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PostCard v-for="post in posts" :key="post.id" :post="post" />
+            <PostCard v-for="post in posts" :key="post.id" :post="post" @saved-change="atualizarPostSalvo" />
             <p v-if="!posts.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação ainda.
             </p>
@@ -319,7 +326,7 @@ onMounted(async () => {
           </div>
 
           <div v-else-if="abaAtiva === 'salvos'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PostCard v-for="post in salvos" :key="post.id" :post="post" />
+            <PostCard v-for="post in salvos" :key="post.id" :post="post" @saved-change="atualizarPostSalvo" />
             <p v-if="!salvos.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação salva ainda.
             </p>

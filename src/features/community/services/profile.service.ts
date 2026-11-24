@@ -113,30 +113,13 @@ export async function listarComentariosPorUsuario(idUsuario: number) {
 }
 
 export async function listarPostsSalvos(idUsuario: number): Promise<Post[]> {
-  const { data } = await http.get(`${BASE_POSTS}/salvos/${idUsuario}`)
-  const linhas = data.posts ?? []
-
-  return linhas.map((linha: any) => ({
-    id: linha.id_post,
-    conteudo: linha.conteudo,
-    data_criacao: linha.data_criacao,
-    data_atualizacao: linha.data_atualizacao ?? null,
-    autor: {
-      id: linha.id_autor,
-      nome_exibicao: linha.autor_nome,
-      username_social: linha.username_social,
-      foto_perfil: linha.foto_perfil,
-      nivel_total: linha.nivel_total,
-    },
-    total_curtidas: Number(linha.total_curtidas ?? 0),
-    total_comentarios: Number(linha.total_comentarios ?? 0),
-    curtiu: false, // ⚠️ ver aviso acima
-  }))
+  const { posts } = await postService.listSaved(idUsuario)
+  return posts
 }
 
 export async function alternarSalvarPost(idUsuario: number, idPost: number) {
-  const { data } = await http.post(`${BASE_POSTS}/salvar/alternar`, { id_usuario: idUsuario, id_post: idPost })
-  return data as { salvo: boolean }
+  void idUsuario // A identidade é obtida pelo backend a partir do JWT.
+  return { salvo: await postService.toggleSaved(idPost) }
 }
 
 /* --------------------------- Seguir / Unfollow --------------------------- */
