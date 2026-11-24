@@ -42,7 +42,7 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
 
 /** Perfil privado volta só com o resumo + `acesso_restrito: true` (o backend decide pelo token). */
 export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
-  const { data } = await http.get(`${BASE_USUARIO}/usuario/${usernameSocial}`)
+  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`)
   return data.usuario ?? data
 }
 
@@ -94,16 +94,6 @@ export async function listarComentariosPorUsuario(idUsuario: number) {
   return { quantidade: data.quantidade ?? 0, comentarios: data.comentarios ?? [] }
 }
 
-/**
- * NOVO — aba "Salvos" com dados reais.
- * ⚠️ A query de postSalvoDAO.js devolve linhas "cruas" (id_post, autor_nome,
- * total_curtidas...), num formato diferente do `Post` que o PostCard espera
- * (autor aninhado, campo `curtiu`). Mapeamos aqui pra não ter que duplicar
- * o PostCard só pra essa aba. `curtiu` fica sempre `false` porque a query
- * não verifica curtida do usuário logado — se quiser esse dado certo,
- * adicione um JOIN com tbl_curtida_post no backend igual ao que a
- * vw_feed_comunidade/postController já fazem no feed normal.
- */
 export async function listarPostsSalvos(idUsuario: number): Promise<Post[]> {
   const { data } = await http.get(`${BASE_POSTS}/salvos/${idUsuario}`)
   const linhas = data.posts ?? []
@@ -222,37 +212,36 @@ export async function desativarPerfilSocial(idUsuario: number) {
   return data
 }
 
-/* ------------------ Solicitação de acesso (perfil privado) ------------------ */
 
-/** GET /v1/comunidade/seguir/solicitacao/status */
+
+/** GET /v1/comunidade/seguir/solicitacao/status/:id_usuario?id_destinatario= */
 export async function buscarEstadoSolicitacao(
   idSolicitante: number,
   idDestinatario: number,
 ): Promise<EstadoSolicitacao> {
-  const { data } = await http.get(`${BASE_SEGUIR}/solicitacao/status`, {
-    params: { id_solicitante: idSolicitante, id_destinatario: idDestinatario },
+  const { data } = await http.get(`${BASE_SEGUIR}/solicitacao/status/${idSolicitante}`, {
+    params: { id_destinatario: idDestinatario },
   })
   return data.status === 'pendente' ? 'pendente' : 'nenhuma'
 }
 
-/** POST /v1/comunidade/seguir/solicitar */
+/** POST /v1/comunidade/seguir/solicitar/:id_usuario */
 export async function solicitarAcesso(
   idSolicitante: number,
   idDestinatario: number,
   tipo: TipoSolicitacao,
 ) {
-  const { data } = await http.post(`${BASE_SEGUIR}/solicitar`, {
-    id_solicitante: idSolicitante,
+  const { data } = await http.post(`${BASE_SEGUIR}/solicitar/${idSolicitante}`, {
     id_destinatario: idDestinatario,
     tipo,
   })
   return data
 }
 
-/** DELETE /v1/comunidade/seguir/solicitar */
+/** DELETE /v1/comunidade/seguir/solicitar/:id_usuario */
 export async function cancelarSolicitacao(idSolicitante: number, idDestinatario: number) {
-  const { data } = await http.delete(`${BASE_SEGUIR}/solicitar`, {
-    data: { id_solicitante: idSolicitante, id_destinatario: idDestinatario },
+  const { data } = await http.delete(`${BASE_SEGUIR}/solicitar/${idSolicitante}`, {
+    data: { id_destinatario: idDestinatario },
   })
   return data
 }
@@ -263,16 +252,16 @@ export async function listarSolicitacoesRecebidas(idUsuario: number): Promise<So
   return data.solicitacoes ?? []
 }
 
-/** PATCH /v1/comunidade/seguir/solicitacoes/:id/responder */
+/** PATCH /v1/comunidade/seguir/solicitacoes/:id_usuario/:id_solicitacao/responder */
 export async function responderSolicitacao(
   idUsuario: number,
   idSolicitacao: number,
   decisao: 'aceitar' | 'recusar',
 ) {
-  const { data } = await http.patch(`${BASE_SEGUIR}/solicitacoes/${idSolicitacao}/responder`, {
-    id_usuario: idUsuario,
-    decisao,
-  })
+  const { data } = await http.patch(
+    `${BASE_SEGUIR}/solicitacoes/${idUsuario}/${idSolicitacao}/responder`,
+    { decisao },
+  )
   return data
 }
 
@@ -284,10 +273,9 @@ export async function listarBloqueados(idUsuario: number): Promise<UsuarioBloque
   return data.bloqueados ?? []
 }
 
-/** POST /v1/comunidade/social/bloqueios */
+/** POST /v1/comunidade/social/bloqueios/:id_usuario */
 export async function bloquearUsuario(idUsuario: number, idBloqueado: number) {
-  const { data } = await http.post(`${BASE_SOCIAL}/bloqueios`, {
-    id_usuario: idUsuario,
+  const { data } = await http.post(`${BASE_SOCIAL}/bloqueios/${idUsuario}`, {
     id_bloqueado: idBloqueado,
   })
   return data
