@@ -58,6 +58,12 @@ const pageTitle = computed(() => (isCreate.value ? 'Criar Perfil Social' : 'Edit
 const bottomButtonLabel = computed(() => (isCreate.value ? 'Confirmar' : 'Salvar Alterações'))
 
 function goBack(): void {
+  const back = window.history.state?.back
+  if (typeof back === 'string' && back.split('?')[0] === '/comunidade/perfil') {
+    void router.back()
+    return
+  }
+
   void router.replace({ name: 'community-profile' })
 }
 

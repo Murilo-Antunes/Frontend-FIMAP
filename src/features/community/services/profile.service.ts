@@ -19,6 +19,7 @@ import type {
   UsuarioBloqueado,
 } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
+import { postService } from './post.service'
 
 const BASE_USUARIO = '/v1/openfinance/usuario'
 const BASE_BADGES = '/v1/comunidade/badge'
@@ -79,9 +80,26 @@ export async function buscarProgressoBadges(idUsuario: number): Promise<BadgeEmP
 
 /* ------------------------- Posts / Respostas / Salvos ------------------------- */
 
-export async function listarPostsPorUsuario(idUsuario: number): Promise<Post[]> {
+export async function listarPostsPorUsuario(idUsuario: number, idVisualizador?: number): Promise<Post[]> {
   const { data } = await http.get(`${BASE_POSTS}/buscar/post/${idUsuario}`)
-  return data.posts ?? data
+  const posts: Post[] = data.posts ?? data
+
+  if (!idVisualizador) return posts
+
+  return Promise.all(posts.map(async (post) => {
+    try {
+      // Busca o estado atualizado para o usuário atual, pois a listagem do perfil
+      // não necessariamente inclui `curtiu` (ou pode devolvê-lo desatualizado).
+      const detalhes = await postService.getPost(post.id, idVisualizador)
+      return {
+        ...post,
+        curtiu: Boolean(detalhes.curtiu),
+        total_curtidas: Number(detalhes.total_curtidas ?? post.total_curtidas ?? 0),
+      }
+    } catch {
+      return { ...post, curtiu: false }
+    }
+  }))
 }
 
 export async function listarPostsInativos(idUsuario: number): Promise<Post[]> {

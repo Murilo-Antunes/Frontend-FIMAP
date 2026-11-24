@@ -22,7 +22,7 @@ import {
   solicitarAcesso,
 } from '../services/profile.service'
 import type { BadgeUsuario, EstadoSolicitacao, PerfilUsuario, TipoSolicitacao } from '../types/profile.types'
-import type { Post } from '@/features/community/types/community.types'
+import type { Comentario, Post } from '@/features/community/types/community.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,6 +53,7 @@ const ABAS = [
 
 const abaAtiva = ref<'publicacoes' | 'respostas'>('publicacoes')
 const posts = ref<Post[]>([])
+const respostas = ref<Comentario[]>([])
 const totalRespostas = ref(0)
 const carregandoAba = ref(false)
 
@@ -97,9 +98,12 @@ async function carregar(username: string) {
     ])
     badges.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
     totalBadgesDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
-    totalRespostas.value = Number(resultadoRespostas?.quantidade ?? 0)
+    respostas.value = Array.isArray(resultadoRespostas?.comentarios)
+      ? resultadoRespostas.comentarios as Comentario[]
+      : []
+    totalRespostas.value = Number(resultadoRespostas?.quantidade ?? respostas.value.length)
 
-    const resultadoPosts = await listarPostsPorUsuario(dadosPerfil.id)
+    const resultadoPosts = await listarPostsPorUsuario(dadosPerfil.id, auth.usuario?.id)
     posts.value = Array.isArray(resultadoPosts) ? resultadoPosts : []
 
     if (auth.usuario?.id) {
@@ -111,6 +115,11 @@ async function carregar(username: string) {
   } finally {
     carregandoPerfil.value = false
   }
+}
+
+function abrirPostDaResposta(idPost: number) {
+  if (!idPost) return
+  void router.push({ name: 'community-post', params: { id: idPost } })
 }
 
 async function alternarSeguir() {
@@ -323,6 +332,23 @@ watch(
             <PostCard v-for="post in posts" :key="post.id" :post="post" />
             <p v-if="!posts.length" class="col-span-full text-sm text-neutral-500">
               Nenhuma publicação ainda.
+            </p>
+          </div>
+
+          <div v-else class="mt-4 flex flex-col gap-3">
+            <button
+              v-for="resposta in respostas"
+              :key="resposta.id"
+              type="button"
+              class="w-full rounded-2xl bg-white p-4 text-left text-sm text-neutral-800 shadow-sm transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
+              :disabled="!resposta.id_post"
+              @click="abrirPostDaResposta(Number(resposta.id_post))"
+            >
+              {{ resposta.mensagem }}
+              <span class="mt-2 block text-xs font-medium text-neutral-500">Ver publicação</span>
+            </button>
+            <p v-if="!respostas.length" class="text-sm text-neutral-500">
+              Nenhuma resposta ainda.
             </p>
           </div>
         </section>

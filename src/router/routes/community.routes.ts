@@ -17,7 +17,7 @@ export const communityRoutes: RouteRecordRaw[] = [
     meta: { requiresSocialProfile: true },
   },
   {
-    path: '/comunidade/perfil',
+    path: '/comunidade/perfil/editar',
     name: 'community-profile-edit',
     component: () => import('@/features/community/views/SocialProfileEditView.vue'),
     meta: { showBack: true },

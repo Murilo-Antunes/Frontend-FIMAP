@@ -97,7 +97,7 @@ async function carregarAba(aba: AbaPerfil) {
   erroAba.value = null
   try {
     if (aba === 'publicacoes') {
-      const resultado = await listarPostsPorUsuario(idUsuario.value)
+      const resultado = await listarPostsPorUsuario(idUsuario.value, idUsuario.value)
       posts.value = Array.isArray(resultado) ? resultado : []
     } else if (aba === 'respostas') {
       const resultado = await listarComentariosPorUsuario(idUsuario.value)
@@ -118,9 +118,47 @@ async function carregarAba(aba: AbaPerfil) {
   }
 }
 
+async function carregarContagensAbas() {
+  if (!idUsuario.value) return
+
+  const resultados = await Promise.allSettled([
+    listarComentariosPorUsuario(idUsuario.value),
+    listarPostsSalvos(idUsuario.value),
+    listarPostsInativos(idUsuario.value),
+  ])
+
+  const [resultadoRespostas, resultadoSalvos, resultadoArquivados] = resultados
+
+  if (resultadoRespostas.status === 'fulfilled') {
+    respostas.value = Array.isArray(resultadoRespostas.value.comentarios)
+      ? resultadoRespostas.value.comentarios
+      : []
+    totalRespostas.value = Number(resultadoRespostas.value.quantidade ?? respostas.value.length)
+  }
+
+  if (resultadoSalvos.status === 'fulfilled') {
+    salvos.value = Array.isArray(resultadoSalvos.value) ? resultadoSalvos.value : []
+  }
+
+  if (resultadoArquivados.status === 'fulfilled') {
+    arquivados.value = Array.isArray(resultadoArquivados.value) ? resultadoArquivados.value : []
+  }
+
+  resultados.forEach((resultado, index) => {
+    if (resultado.status === 'rejected') {
+      console.error(`Erro ao carregar contagem da aba ${['respostas', 'salvos', 'arquivados'][index]}:`, resultado.reason)
+    }
+  })
+}
+
 function selecionarAba(aba: AbaPerfil) {
   abaAtiva.value = aba
   carregarAba(aba)
+}
+
+function abrirPostDaResposta(idPost: number) {
+  if (!idPost) return
+  void router.push({ name: 'community-post', params: { id: idPost } })
 }
 
 function abrirEdicao() {
@@ -128,9 +166,16 @@ function abrirEdicao() {
   router.push({ name: 'community-profile-edit' })
 }
 
+function voltar() {
+  if (window.history.state?.back) router.back()
+  else router.replace({ name: 'community' })
+}
+
 onMounted(async () => {
   await carregarPerfil()
-  if (perfil.value) await carregarAba('publicacoes')
+  if (perfil.value) {
+    await Promise.all([carregarAba('publicacoes'), carregarContagensAbas()])
+  }
 })
 </script>
 
@@ -140,7 +185,7 @@ onMounted(async () => {
       <button
         type="button"
         class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
-        @click="router.back()"
+        @click="voltar"
       >
         <ArrowLeft :size="18" />
       </button>
@@ -249,13 +294,17 @@ onMounted(async () => {
           </div>
 
           <div v-else-if="abaAtiva === 'respostas'" class="mt-4 flex flex-col gap-3">
-            <p
+            <button
               v-for="resposta in respostas"
               :key="resposta.id"
-              class="rounded-2xl bg-white p-4 text-sm text-neutral-800 shadow-sm"
+              type="button"
+              class="w-full rounded-2xl bg-white p-4 text-left text-sm text-neutral-800 shadow-sm transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
+              :disabled="!resposta.id_post"
+              @click="abrirPostDaResposta(Number(resposta.id_post))"
             >
               {{ resposta.mensagem }}
-            </p>
+              <span class="mt-2 block text-xs font-medium text-neutral-500">Ver publicação</span>
+            </button>
             <p v-if="!respostas.length" class="text-sm text-neutral-500">
               Nenhuma resposta ainda.
             </p>
