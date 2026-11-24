@@ -40,8 +40,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(payload: LoginPayload) {
-    const { usuario: logged, access_token } = await authService.login(payload)
-    sessionToken.setToken(access_token)
+    const { usuario: logged, access_token: accessToken } = await authService.login(payload)
+    sessionToken.setToken(accessToken)
     usuario.value = logged
     status.value = 'autenticado'
   }

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, MoreHorizontal, Share2 } from 'lucide-vue-next'
+import { ArrowLeft, Ban, MoreHorizontal, Share2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import ProfileCard from '../components/ProfileCard.vue'
 import BadgeCard from '../components/BadgeCard.vue'
 import PrivateProfile from '../components/PrivateProfile.vue'
 import PostCard from '@/features/community/components/PostCard.vue'
 import {
+  bloquearUsuario,
   buscarBadgesUsuario,
   buscarEstadoSolicitacao,
   buscarPerfilPorUsername,
@@ -67,7 +68,7 @@ async function carregar(username: string) {
   erroSolicitacao.value = null
   estadoSolicitacao.value = 'nenhuma'
   try {
-    const dadosPerfil = await buscarPerfilPorUsername(username, auth.usuario?.id)
+    const dadosPerfil = await buscarPerfilPorUsername(username)
 
     if (!dadosPerfil?.id) {
       erro.value = 'Usuário não encontrado.'
@@ -160,6 +161,28 @@ async function cancelar() {
   }
 }
 
+// Menu "⋯" e bloqueio
+const menuAberto = ref(false)
+const confirmandoBloqueio = ref(false)
+const bloqueando = ref(false)
+const erroBloqueio = ref<string | null>(null)
+
+async function confirmarBloqueio() {
+  if (!perfil.value || !auth.usuario?.id || bloqueando.value) return
+  bloqueando.value = true
+  erroBloqueio.value = null
+  try {
+    await bloquearUsuario(auth.usuario.id, perfil.value.id)
+    confirmandoBloqueio.value = false
+    router.back()
+  } catch (e) {
+    console.error('Erro ao bloquear usuário:', e)
+    erroBloqueio.value = 'Não foi possível bloquear agora. Tente novamente.'
+  } finally {
+    bloqueando.value = false
+  }
+}
+
 watch(
   () => route.params.username as string,
   (username) => {
@@ -185,9 +208,40 @@ watch(
         <button type="button" class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100" aria-label="Compartilhar perfil">
           <Share2 :size="18" />
         </button>
-        <button type="button" class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100" aria-label="Mais opções">
-          <MoreHorizontal :size="18" />
-        </button>
+        <div class="relative" @keydown.esc="menuAberto = false">
+          <button
+            type="button"
+            class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100"
+            aria-label="Mais opções"
+            aria-haspopup="menu"
+            :aria-expanded="menuAberto"
+            @click="menuAberto = !menuAberto"
+          >
+            <MoreHorizontal :size="18" />
+          </button>
+
+          <template v-if="menuAberto">
+            <button
+              type="button"
+              class="fixed inset-0 z-10 cursor-default"
+              tabindex="-1"
+              aria-label="Fechar menu"
+              @click="menuAberto = false"
+            />
+            <ul role="menu" class="absolute right-0 top-full z-20 mt-1 w-56 rounded-xl bg-white p-1 shadow-lg">
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-neutral-100"
+                  @click="menuAberto = false; confirmandoBloqueio = true"
+                >
+                  <Ban :size="15" aria-hidden="true" /> Bloquear usuário
+                </button>
+              </li>
+            </ul>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -272,6 +326,44 @@ watch(
             </p>
           </div>
         </section>
+      </div>
+    </div>
+
+    <div
+      v-if="confirmandoBloqueio"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-bloqueio"
+      @click.self="confirmandoBloqueio = false"
+      @keydown.esc="confirmandoBloqueio = false"
+    >
+      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+        <h3 id="titulo-bloqueio" class="text-base font-semibold text-neutral-900">
+          Bloquear @{{ perfil?.username_social ?? 'usuário' }}?
+        </h3>
+        <p class="mt-2 text-sm leading-relaxed text-neutral-500">
+          Essa pessoa não verá seu perfil, não poderá te seguir nem comentar nos seus posts, e vocês deixam de se
+          seguir. Você pode desbloquear depois nas configurações.
+        </p>
+        <p v-if="erroBloqueio" class="mt-3 text-xs text-red-600" role="alert">{{ erroBloqueio }}</p>
+        <div class="mt-5 flex gap-2">
+          <button
+            type="button"
+            class="flex-1 rounded-xl bg-neutral-100 py-2.5 text-sm font-medium text-neutral-900 hover:bg-neutral-200"
+            @click="confirmandoBloqueio = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            :disabled="bloqueando"
+            class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            @click="confirmarBloqueio"
+          >
+            {{ bloqueando ? 'Bloqueando…' : 'Bloquear' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>

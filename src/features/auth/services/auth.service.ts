@@ -1,4 +1,4 @@
-import { http } from '@/lib/api/http'
+import { http, publicHttp } from '@/lib/api/http'
 import type {
   ApiSuccessResponse,
   ForgotPasswordResponse,
@@ -15,7 +15,7 @@ const BASE = '/v1/openfinance/usuario'
 export const authService = {
 
   async register(payload: RegisterPayload): Promise<number> {
-    const { data } = await http.post<RegisterUserResponse>(`${BASE}/criar-usuario`, {
+    const { data } = await publicHttp.post<RegisterUserResponse>(`${BASE}/criar-usuario`, {
       nome: payload.nome,
       cpf: payload.cpf,
       email: payload.email,
@@ -29,7 +29,7 @@ export const authService = {
   },
 
   async verifyRegisterOtp(idUsuario: number, codigo: string): Promise<void> {
-    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/consultar/otp/${idUsuario}`, {
+    const { data } = await publicHttp.post<ApiSuccessResponse>(`${BASE}/consultar/otp/${idUsuario}`, {
       id_usuario: idUsuario,
       codigo,
     })
@@ -41,13 +41,13 @@ export const authService = {
   async login(payload: LoginPayload): Promise<LoginResponse> {
     const dispositivoInfo = obterInformacoesDispositivo()
     
-    const { data } = await http.post<LoginResponse>(`${BASE}/login`, {
+    const { data } = await publicHttp.post<LoginResponse>(`${BASE}/login`, {
       email: payload.email,
       senha: payload.senha,
       dispositivo: dispositivoInfo,
     })
     
-    if (!data?.sucesso || !data.usuario) {
+    if (!data?.sucesso || !data.usuario || !data.access_token) {
       throw new Error(data?.mensagem ?? 'Credenciais inválidas.')
     }
     return data
@@ -69,7 +69,7 @@ export const authService = {
     const url = `${BASE}/usuario/email/${email}`
     
     console.log('GET URL:', url)
-    const { data } = await http.get<{ id_usuario: number, usuario?: { id: number } }>(url)
+    const { data } = await publicHttp.get<{ id_usuario: number, usuario?: { id: number } }>(url)
     console.log('Response data:', data)
     
     // A API retorna o id dentro de data.usuario.id, não diretamente em data.id_usuario
@@ -86,7 +86,7 @@ export const authService = {
    * POST /v1/openfinance/usuario/codigo-otp/senha/:id_usuario
    */
   async forgotPassword(idUsuario: number): Promise<ForgotPasswordResponse> {
-    const { data } = await http.post<ForgotPasswordResponse>(`${BASE}/codigo-otp/senha/${idUsuario}`)
+    const { data } = await publicHttp.post<ForgotPasswordResponse>(`${BASE}/codigo-otp/senha/${idUsuario}`)
     console.log(data)
     return data
   },
@@ -95,27 +95,17 @@ export const authService = {
    * Verifica o código OTP para redefinição de senha.
    * POST /v1/openfinance/usuario/alterar/verificar-codigo/:id_usuario
    */
-  async verifyPasswordOtp(idUsuario: number, codigo: string): Promise<void> {
-    const { data } = await http.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
+  async resetPassword(idUsuario: number, codigo: string, novaSenha: string): Promise<void> {
+    const { data } = await publicHttp.post<ApiSuccessResponse>(`${BASE}/alterar/verificar-codigo/${idUsuario}`, {
       codigo,
+      novaSenha,
     })
     if (!data?.sucesso) {
-      throw new Error(data?.mensagem ?? 'Código inválido.')
+      throw new Error(data?.mensagem ?? 'Não foi possível redefinir a senha.')
     }
   },
 
-  /**
-   * Redefine a senha após OTP verificado.
-   * (Esta função agora será usada apenas para atualizar a senha via updateUsuario)
-   */
-  async updatePassword(idUsuario: number, novaSenha: string): Promise<void> {
-    console.log(`Atualizando senha para usuário ${idUsuario}...`);
-    await this.updateUsuario(idUsuario, { senha: novaSenha } as any)
-    console.log(`Senha atualizada com sucesso para usuário ${idUsuario}.`);
-  },
-
   async updateUsuario(idUsuario: number, payload: Partial<RegisterPayload>): Promise<void> {
-    console.log(`Enviando PATCH para ${BASE}/usuario-update/${idUsuario} com payload:`, payload);
     await http.patch(`${BASE}/usuario-update/${idUsuario}`, payload)
   },
 

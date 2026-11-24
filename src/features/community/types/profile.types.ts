@@ -77,9 +77,29 @@ export interface ResumoSocial {
   audiencia_visivel: number | null
   xp_semana: number | null
   percentil_ranking: number | null
+  solicitacoes_pendentes: number
 }
 
 /* --------------------- Solicitação de acesso (privado) --------------------- */
 
 export type EstadoSolicitacao = 'nenhuma' | 'pendente'
 export type TipoSolicitacao = 'conexao' | 'seguir'
+
+export interface SolicitacaoRecebida {
+  id: number
+  tipo: TipoSolicitacao
+  data_criacao: string
+  id_usuario: number
+  nome_exibicao: string
+  username_social: string | null
+  foto_perfil: string | null
+  nivel_total: number
+}
+
+export interface UsuarioBloqueado {
+  id_usuario: number
+  nome_exibicao: string
+  username_social: string | null
+  foto_perfil: string | null
+  data_criacao: string
+}

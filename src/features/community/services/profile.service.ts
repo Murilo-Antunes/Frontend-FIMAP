@@ -14,7 +14,9 @@ import type {
   PerfilUsuario,
   QuemPodeComentar,
   ResumoSocial,
+  SolicitacaoRecebida,
   TipoSolicitacao,
+  UsuarioBloqueado,
 } from '../types/profile.types'
 import type { Post } from '@/features/community/types/community.types'
 
@@ -24,7 +26,12 @@ const BASE_POSTS = '/v1/comunidade/posts'
 const BASE_COMENTARIOS = '/v1/comunidade/posts/comentario'
 const BASE_SEGUIR = '/v1/comunidade/seguir'
 const BASE_COMUNIDADE = '/v1/comunidade' // onde você montou nivelRoutes
-const BASE_SOCIAL = '/v1/comunidade/social' // ⚠️ rotas novas de configurações sociais (ainda não existem no back)
+const BASE_SOCIAL = '/v1/comunidade/social'
+
+// Identidade: o interceptor do `http` já manda o Bearer token e o backend lê o
+// usuário do token. Nenhuma chamada daqui envia "quem sou eu" por query/body de
+// verificação — os ids que vão no corpo (id_seguidor, id_solicitante...) são
+// conferidos contra o token no backend.
 
 /* ----------------------------- Perfil ----------------------------- */
 
@@ -33,17 +40,9 @@ export async function buscarPerfilPorId(idUsuario: number): Promise<PerfilUsuari
   return data.usuario ?? data
 }
 
-/**
- * `idVisualizador` (quem está olhando) deixa o backend decidir se devolve o
- * perfil completo ou só o resumo restrito de um perfil privado.
- */
-export async function buscarPerfilPorUsername(
-  usernameSocial: string,
-  idVisualizador?: number,
-): Promise<PerfilUsuario> {
-  const { data } = await http.get(`${BASE_USUARIO}/usuario/social/${usernameSocial}`, {
-    params: idVisualizador ? { id_visualizador: idVisualizador } : undefined,
-  })
+/** Perfil privado volta só com o resumo + `acesso_restrito: true` (o backend decide pelo token). */
+export async function buscarPerfilPorUsername(usernameSocial: string): Promise<PerfilUsuario> {
+  const { data } = await http.get(`${BASE_USUARIO}/usuario/${usernameSocial}`)
   return data.usuario ?? data
 }
 
@@ -182,7 +181,7 @@ const OPCOES_COMENTARIO: QuemPodeComentar[] = ['todos', 'seguidores', 'ninguem']
 const paraBool = (valor: unknown, padrao: boolean) =>
   valor === undefined || valor === null ? padrao : Boolean(Number(valor))
 
-/** ⚠️ Rota nova: GET /v1/comunidade/social/configuracoes/:id_usuario */
+/** GET /v1/comunidade/social/configuracoes/:id_usuario */
 export async function buscarConfiguracoesSociais(idUsuario: number): Promise<ConfiguracoesSociais> {
   const { data } = await http.get(`${BASE_SOCIAL}/configuracoes/${idUsuario}`)
   const c = data.configuracoes ?? data
@@ -195,7 +194,7 @@ export async function buscarConfiguracoesSociais(idUsuario: number): Promise<Con
   }
 }
 
-/** ⚠️ Rota nova: PATCH /v1/comunidade/social/configuracoes/:id_usuario (aceita campos parciais) */
+/** PATCH /v1/comunidade/social/configuracoes/:id_usuario (aceita campos parciais) */
 export async function atualizarConfiguracoesSociais(
   idUsuario: number,
   parcial: Partial<ConfiguracoesSociais>,
@@ -204,7 +203,7 @@ export async function atualizarConfiguracoesSociais(
   return data
 }
 
-/** ⚠️ Rota nova: GET /v1/comunidade/social/resumo/:id_usuario */
+/** GET /v1/comunidade/social/resumo/:id_usuario */
 export async function buscarResumoSocial(idUsuario: number): Promise<ResumoSocial> {
   const { data } = await http.get(`${BASE_SOCIAL}/resumo/${idUsuario}`)
   const r = data.resumo ?? data
@@ -213,10 +212,11 @@ export async function buscarResumoSocial(idUsuario: number): Promise<ResumoSocia
     audiencia_visivel: numeroOuNull(r?.audiencia_visivel),
     xp_semana: numeroOuNull(r?.xp_semana),
     percentil_ranking: numeroOuNull(r?.percentil_ranking),
+    solicitacoes_pendentes: numeroOuNull(r?.solicitacoes_pendentes) ?? 0,
   }
 }
 
-/** ⚠️ Rota nova: PATCH /v1/comunidade/social/desativar/:id_usuario */
+/** PATCH /v1/comunidade/social/desativar/:id_usuario */
 export async function desativarPerfilSocial(idUsuario: number) {
   const { data } = await http.patch(`${BASE_SOCIAL}/desativar/${idUsuario}`)
   return data
@@ -224,7 +224,7 @@ export async function desativarPerfilSocial(idUsuario: number) {
 
 /* ------------------ Solicitação de acesso (perfil privado) ------------------ */
 
-/** ⚠️ Rota nova: GET /v1/comunidade/seguir/solicitacao/status?id_solicitante=&id_destinatario= */
+/** GET /v1/comunidade/seguir/solicitacao/status */
 export async function buscarEstadoSolicitacao(
   idSolicitante: number,
   idDestinatario: number,
@@ -235,7 +235,7 @@ export async function buscarEstadoSolicitacao(
   return data.status === 'pendente' ? 'pendente' : 'nenhuma'
 }
 
-/** ⚠️ Rota nova: POST /v1/comunidade/seguir/solicitar */
+/** POST /v1/comunidade/seguir/solicitar */
 export async function solicitarAcesso(
   idSolicitante: number,
   idDestinatario: number,
@@ -249,10 +249,52 @@ export async function solicitarAcesso(
   return data
 }
 
-/** ⚠️ Rota nova: DELETE /v1/comunidade/seguir/solicitar */
+/** DELETE /v1/comunidade/seguir/solicitar */
 export async function cancelarSolicitacao(idSolicitante: number, idDestinatario: number) {
   const { data } = await http.delete(`${BASE_SEGUIR}/solicitar`, {
     data: { id_solicitante: idSolicitante, id_destinatario: idDestinatario },
   })
+  return data
+}
+
+/** GET /v1/comunidade/seguir/solicitacoes/recebidas/:id_usuario */
+export async function listarSolicitacoesRecebidas(idUsuario: number): Promise<SolicitacaoRecebida[]> {
+  const { data } = await http.get(`${BASE_SEGUIR}/solicitacoes/recebidas/${idUsuario}`)
+  return data.solicitacoes ?? []
+}
+
+/** PATCH /v1/comunidade/seguir/solicitacoes/:id/responder */
+export async function responderSolicitacao(
+  idUsuario: number,
+  idSolicitacao: number,
+  decisao: 'aceitar' | 'recusar',
+) {
+  const { data } = await http.patch(`${BASE_SEGUIR}/solicitacoes/${idSolicitacao}/responder`, {
+    id_usuario: idUsuario,
+    decisao,
+  })
+  return data
+}
+
+/* ------------------------------- Bloqueios ------------------------------- */
+
+/** GET /v1/comunidade/social/bloqueios/:id_usuario */
+export async function listarBloqueados(idUsuario: number): Promise<UsuarioBloqueado[]> {
+  const { data } = await http.get(`${BASE_SOCIAL}/bloqueios/${idUsuario}`)
+  return data.bloqueados ?? []
+}
+
+/** POST /v1/comunidade/social/bloqueios */
+export async function bloquearUsuario(idUsuario: number, idBloqueado: number) {
+  const { data } = await http.post(`${BASE_SOCIAL}/bloqueios`, {
+    id_usuario: idUsuario,
+    id_bloqueado: idBloqueado,
+  })
+  return data
+}
+
+/** DELETE /v1/comunidade/social/bloqueios/:id_usuario/:id_bloqueado */
+export async function desbloquearUsuario(idUsuario: number, idBloqueado: number) {
+  const { data } = await http.delete(`${BASE_SOCIAL}/bloqueios/${idUsuario}/${idBloqueado}`)
   return data
 }

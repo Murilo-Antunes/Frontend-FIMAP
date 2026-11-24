@@ -45,6 +45,7 @@ const confirmandoDesativar = ref(false)
 const desativando = ref(false)
 
 const totalBadges = computed(() => Number(perfil.value?.total_badges ?? 0))
+const pendentes = computed(() => resumo.value?.solicitacoes_pendentes ?? 0)
 const audienciaFormatada = computed(() => {
   const n = resumo.value?.audiencia_visivel
   if (n === null || n === undefined) return null
@@ -304,6 +305,25 @@ onMounted(carregar)
               </ul>
             </template>
           </div>
+
+          <div class="mx-4 h-[3px] rounded-full bg-neutral-100" role="separator" />
+
+          <RouterLink
+            :to="{ name: 'community-access-requests' }"
+            class="flex items-center justify-between gap-3 rounded-b-2xl px-4 py-4 transition hover:bg-neutral-50"
+          >
+            <span>
+              <span class="block text-sm font-medium text-neutral-900">Solicitações de acesso</span>
+              <span class="block text-xs text-neutral-500">Aprovar ou recusar quem quer ver seu perfil</span>
+            </span>
+            <span
+              v-if="pendentes > 0"
+              class="rounded-full bg-black px-2 py-0.5 text-[11px] font-semibold text-white"
+              :aria-label="`${pendentes} pendentes`"
+            >
+              {{ pendentes }}
+            </span>
+          </RouterLink>
         </div>
       </section>
 
@@ -377,18 +397,22 @@ onMounted(carregar)
           </h2>
           <span class="text-xs text-neutral-500">Compliance Fimap</span>
         </div>
-        <!-- ⚠️ Estas três telas ainda não existem (usuários bloqueados, diretrizes, termos),
-             então as linhas ainda não navegam pra lugar nenhum. -->
         <ul class="overflow-hidden rounded-2xl bg-white shadow-sm">
           <li>
-            <button type="button" class="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-neutral-50">
+            <RouterLink
+              :to="{ name: 'community-blocked-users' }"
+              class="flex w-full items-center gap-3 px-4 py-4 transition hover:bg-neutral-50"
+            >
               <Ban :size="18" class="shrink-0 text-neutral-900" aria-hidden="true" />
               <span class="text-sm font-medium text-neutral-900">Usuários Bloqueados</span>
-            </button>
+            </RouterLink>
           </li>
           <li><div class="mx-4 h-px bg-neutral-100" role="separator" /></li>
           <li>
-            <button type="button" class="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-neutral-50">
+            <RouterLink
+              :to="{ name: 'community-guidelines' }"
+              class="flex w-full items-center gap-3 px-4 py-4 transition hover:bg-neutral-50"
+            >
               <Gavel :size="18" class="shrink-0 text-neutral-900" aria-hidden="true" />
               <span>
                 <span class="block text-sm font-medium text-neutral-900">Diretrizes da Comunidade Fimap</span>
@@ -396,14 +420,17 @@ onMounted(carregar)
                   Respeito mútuo, sigilo estrito de senhas e dados confidenciais
                 </span>
               </span>
-            </button>
+            </RouterLink>
           </li>
           <li><div class="mx-4 h-px bg-neutral-100" role="separator" /></li>
           <li>
-            <button type="button" class="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-neutral-50">
+            <RouterLink
+              :to="{ name: 'community-terms' }"
+              class="flex w-full items-center gap-3 px-4 py-4 transition hover:bg-neutral-50"
+            >
               <FileText :size="18" class="shrink-0 text-neutral-900" aria-hidden="true" />
               <span class="text-sm font-medium text-neutral-900">Termos de Uso Social</span>
-            </button>
+            </RouterLink>
           </li>
         </ul>
       </section>
