@@ -9,7 +9,6 @@ export async function readChatStream(
   const reader = stream.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let finished = false
   try {
     while (true) {
       const { value, done } = await reader.read()
@@ -25,16 +24,16 @@ export async function readChatStream(
         const event: ChatEvent = JSON.parse(data)
         if (event.tipo === 'erro') throw new Error(event.mensagem)
         if (event.tipo === 'fim') {
-          finished = true
           event.acoes_financeiras = parseFinancialActions(event.acoes_financeiras)
         }
         onEvent(event)
+        if (event.tipo === 'fim') return
       }
       if (done) break
     }
-    if (!finished) throw new Error('A resposta foi interrompida. Consulte o histórico antes de enviar novamente.')
+    throw new Error('A resposta foi interrompida. Consulte o histórico antes de enviar novamente.')
   } finally {
-    await reader.cancel().catch(() => undefined)
+    void reader.cancel().catch(() => undefined)
     reader.releaseLock()
   }
 }

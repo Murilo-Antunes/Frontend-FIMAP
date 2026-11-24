@@ -137,11 +137,12 @@ export function useChat() {
     try {
       const saved = await chatService.confirmFinancialAction(id, action, signal)
       if (!isCurrent()) return
-      messages.value = messages.value.map(message => message.acoes_financeiras ? {
+      const updateAction = (message: ChatMessage) => message.acoes_financeiras ? {
         ...message,
         acoes_financeiras: message.acoes_financeiras.map(item => item.id === saved.id && item.versao === saved.versao ? saved : item),
-      } : message)
-      cache.set(id, messages.value)
+      } : message
+      messages.value = messages.value.map(updateAction)
+      cache.set(id, (cache.get(id) ?? []).map(updateAction))
     } catch (cause) {
       if (!isCurrent()) return
       if (axios.isAxiosError(cause) && cause.response?.status === 409) {
@@ -181,6 +182,7 @@ export function useChat() {
       }
       const id = selectedId.value!
       const previous = [...messages.value]
+      const savedMessages = cache.get(id) ?? []
       messages.value = [...previous, { papel: 0, conteudo: data.pergunta }, { papel: 1, conteudo: '' }]
       draft.value = ''
       let completed = false
@@ -201,11 +203,12 @@ export function useChat() {
         if (current === generation && completed) {
           const answer = messages.value.at(-1)
           if (answer && financialActions) answer.acoes_financeiras = financialActions
-          cache.set(id, [...messages.value])
+          cache.set(id, [...savedMessages, ...messages.value.slice(previous.length)])
         }
       } catch (cause) {
         if (current === generation) {
-          // Um trecho recebido não comprova que o backend salvou o par.
+          // Uma resposta parcial fica visível nesta sessão sem entrar no histórico salvo.
+          if (messages.value.at(-1)?.conteudo && !signal.aborted) return
           messages.value = previous
           draft.value = data.pergunta
           cache.delete(id)
