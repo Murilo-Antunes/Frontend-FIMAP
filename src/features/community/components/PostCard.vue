@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { MessageSquare } from 'lucide-vue-next'
+import { Bookmark, MessageSquare } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { postService } from '../services/post.service'
 import type { Post } from '../types/community.types'
@@ -13,6 +13,7 @@ import PostMedia from './PostMedia.vue'
 import UserAvatar from './UserAvatar.vue'
 
 const props = defineProps<{ post: Post }>()
+const emit = defineEmits<{ savedChange: [idPost: number, salvo: boolean] }>()
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -26,6 +27,9 @@ const isOwn = computed(() => Number(props.post.id_usuario) === auth.usuario?.id)
 const liked = ref(props.post.curtiu)
 const likes = ref(props.post.total_curtidas)
 const busy = ref(false)
+const saved = ref(Boolean(props.post.salvo))
+const saving = ref(false)
+const checkingSaved = ref(props.post.salvo === undefined)
 
 watch(
   () => [props.post.curtiu, props.post.total_curtidas] as const,
@@ -34,6 +38,21 @@ watch(
     likes.value = total
   },
 )
+
+watch(() => props.post.salvo, (value) => {
+  if (value !== undefined) saved.value = value
+})
+
+onMounted(async () => {
+  if (props.post.salvo !== undefined) return
+  try {
+    saved.value = await postService.isSaved(props.post.id)
+  } catch {
+    // A falha de verificação não impede salvar ou abrir a publicação.
+  } finally {
+    checkingSaved.value = false
+  }
+})
 
 /**
  * O card inteiro abre o post, exceto cliques em botões e links (curtir, nome do autor).
@@ -62,6 +81,22 @@ async function toggleLike(): Promise<void> {
     likes.value = previous.likes
   } finally {
     busy.value = false
+  }
+}
+
+async function toggleSaved(): Promise<void> {
+  if (saving.value) return
+  const previous = saved.value
+  saving.value = true
+  saved.value = !previous
+
+  try {
+    saved.value = await postService.toggleSaved(props.post.id)
+    emit('savedChange', props.post.id, saved.value)
+  } catch {
+    saved.value = previous
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -107,15 +142,27 @@ async function toggleLike(): Promise<void> {
       <PostMedia :items="parts.media" compact :limit="4" />
     </div>
 
-    <footer class="mt-auto flex items-center gap-4 pt-1">
-      <LikeButton :liked="liked" :count="likes" :busy="busy" @toggle="toggleLike" />
-      <span
-        class="inline-flex items-center gap-1.5 text-xs text-neutral-500"
-        :aria-label="`${post.total_comentarios} comentários`"
+    <footer class="mt-auto flex items-center justify-between pt-1">
+      <div class="flex items-center gap-4">
+        <LikeButton :liked="liked" :count="likes" :busy="busy" @toggle="toggleLike" />
+        <span
+          class="inline-flex items-center gap-1.5 text-xs text-neutral-500"
+          :aria-label="`${post.total_comentarios} comentários`"
+        >
+          <MessageSquare class="size-4" aria-hidden="true" />
+          <span class="tabular-nums">{{ post.total_comentarios }}</span>
+        </span>
+      </div>
+      <button
+        type="button"
+        class="inline-flex size-8 items-center justify-center rounded-md text-neutral-500 outline-none transition hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-black/30 disabled:opacity-60"
+        :aria-label="saved ? 'Remover post dos salvos' : 'Salvar post'"
+        :aria-pressed="saved"
+        :disabled="saving || checkingSaved"
+        @click.stop.prevent="toggleSaved"
       >
-        <MessageSquare class="size-4" aria-hidden="true" />
-        <span class="tabular-nums">{{ post.total_comentarios }}</span>
-      </span>
+        <Bookmark :class="['size-4', saved ? 'fill-current text-neutral-900' : '']" aria-hidden="true" />
+      </button>
     </footer>
   </article>
 </template>

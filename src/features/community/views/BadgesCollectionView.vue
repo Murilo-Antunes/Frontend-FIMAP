@@ -5,7 +5,7 @@ import { ArrowLeft, Sparkles } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import BadgeCard from '../components/BadgeCard.vue'
 import { buscarBadgesUsuario, buscarPerfilPorId, buscarProgressoBadges, buscarTodasBadges } from '../services/profile.service'
-import type { BadgeEmProgresso, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
+import type { Badge, BadgeEmProgresso, BadgeUsuario, PerfilUsuario } from '../types/profile.types'
 import { percentualNivel, tituloNivel, useNiveis, xpParaProximoNivel } from '../utils/nivel'
 import { formatarDataSegura } from '../utils/format-safe'
 
@@ -16,6 +16,7 @@ const { niveis, carregarNiveis } = useNiveis()
 const perfil = ref<PerfilUsuario | null>(null)
 const conquistadas = ref<BadgeUsuario[]>([])
 const emProgresso = ref<BadgeEmProgresso[]>([])
+const todasBadges = ref<Badge[]>([])
 const totalDisponiveis = ref(0)
 const carregando = ref(true)
 const erro = ref<string | null>(null)
@@ -35,12 +36,21 @@ const proximaXp = computed(() =>
   perfil.value ? xpParaProximoNivel(niveis.value, perfil.value.nivel_total ?? 1) : 0,
 )
 
+// Inclui também badges sem critério de progresso publicado pela API.
+const bloqueadas = computed(() => {
+  const idsConquistadas = new Set(conquistadas.value.map((badge) => badge.id))
+  const progressoPorId = new Map(emProgresso.value.map((badge) => [badge.id, badge]))
+  return todasBadges.value
+    .filter((badge) => !idsConquistadas.has(badge.id))
+    .map((badge) => ({ badge, progresso: progressoPorId.get(badge.id) }))
+})
+
 async function carregar() {
   if (!auth.usuario?.id) return
   carregando.value = true
   erro.value = null
   try {
-    const [dadosPerfil, badgesUsuario, todasBadges, progresso] = await Promise.all([
+    const [dadosPerfil, badgesUsuario, badgesDisponiveis, progresso] = await Promise.all([
       buscarPerfilPorId(auth.usuario.id),
       buscarBadgesUsuario(auth.usuario.id),
       buscarTodasBadges(),
@@ -49,7 +59,8 @@ async function carregar() {
     ])
     perfil.value = dadosPerfil
     conquistadas.value = Array.isArray(badgesUsuario) ? badgesUsuario : []
-    totalDisponiveis.value = Array.isArray(todasBadges) ? todasBadges.length : 0
+    todasBadges.value = Array.isArray(badgesDisponiveis) ? badgesDisponiveis : []
+    totalDisponiveis.value = todasBadges.value.length
     emProgresso.value = Array.isArray(progresso) ? progresso : []
   } catch (e) {
     console.error('Erro ao carregar coleção de badges:', e)
@@ -161,15 +172,18 @@ onMounted(carregar)
           :footer-left="`Desbloqueada em ${formatarDataSegura(badge.data_conquista, { month: 'short', year: 'numeric' })}`"
         />
         <BadgeCard
-          v-for="badge in emProgresso"
-          :key="`p-${badge.id}`"
-          :badge="badge"
+          v-for="item in bloqueadas"
+          :key="`p-${item.badge.id}`"
+          :badge="item.badge"
           locked
-          tag="Em curso"
-          :progress="progressoPercentual(badge)"
-          :footer-left="`${badge.progresso_atual ?? 0} de ${badge.progresso_total ?? '—'}`"
+          :tag="item.progresso ? 'Em curso' : 'Bloqueada'"
+          :progress="item.progresso ? progressoPercentual(item.progresso) : undefined"
+          :footer-left="item.progresso
+            ? `Faltam ${Math.max(0, item.progresso.progresso_total - item.progresso.progresso_atual)}`
+            : 'Progresso indisponível'"
+          :footer-right="item.progresso ? `de ${item.progresso.progresso_total}` : undefined"
         />
-        <p v-if="!conquistadas.length && !emProgresso.length" class="col-span-full text-sm text-neutral-500">
+        <p v-if="!conquistadas.length && !bloqueadas.length" class="col-span-full text-sm text-neutral-500">
           Nenhuma badge para mostrar ainda.
         </p>
       </div>
