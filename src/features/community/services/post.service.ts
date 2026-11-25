@@ -12,6 +12,32 @@ interface FeedApi {
 }
 
 export const postService = {
+  /** POST /salvar/alternar. A identidade do usuário vem do token JWT. */
+  async toggleSaved(idPost: number): Promise<boolean> {
+    const { data } = await http.post<{ conteudo?: { salvo?: boolean }; salvo?: boolean }>(
+      `${communityEndpoints.savePost}/alternar`,
+      { id_post: idPost },
+    )
+    return Boolean(data.conteudo?.salvo ?? data.salvo)
+  },
+
+  /** GET /salvar/verificar/:id_post. */
+  async isSaved(idPost: number): Promise<boolean> {
+    const { data } = await http.get<{ conteudo?: { salvo?: boolean }; salvo?: boolean }>(
+      `${communityEndpoints.savePost}/verificar/${idPost}`,
+    )
+    return Boolean(data.conteudo?.salvo ?? data.salvo)
+  },
+
+  /** GET /salvos/:id_usuario?pagina=&limite= */
+  async listSaved(idUsuario: number, pagina = 1, limite = 12, signal?: AbortSignal): Promise<FeedResult> {
+    const { data } = await http.get<FeedApi>(communityEndpoints.savedPosts(idUsuario), {
+      params: { pagina, limite },
+      signal,
+    })
+    return { posts: data.posts ?? [], total: data.total ?? 0, pagina: data.pagina ?? pagina, limite: data.limite ?? limite }
+  },
+
   /**
    * PROPOSTO: GET /posts/feed?pagina=&limite=&ordem=recentes|antigos&busca=&id_usuario=
    * Posts ativos de todos os usuários, com `autor`, `total_curtidas`, `total_comentarios`
@@ -51,13 +77,18 @@ export const postService = {
   },
 
   /**
-   * POST /criar — existente. Body: { id_usuario, conteudo: [{ tipo: 'texto', valor }] }.
-   * Retorna o post criado (com autor/contagens se o backend v-social estiver aplicado).
+   * POST /criar. Os nomes dos campos multipart seguem o contrato do backend.
    */
-  async create(idUsuario: number, texto: string): Promise<Post> {
+  async create(texto: string, midias: File[] = []): Promise<Post> {
+    const body = new FormData()
+    if (texto) body.append('conteudo[texto]', texto)
+    midias.forEach((arquivo) => {
+      body.append(arquivo.type === 'video/mp4' ? 'conteudo[midia]' : 'conteudo[foto]', arquivo)
+    })
+
     const { data } = await http.post<{ sucesso: boolean; mensagem: string; post: Partial<Post> & Pick<Post, 'id'> }>(
       communityEndpoints.createPost,
-      { id_usuario: idUsuario, conteudo: [{ tipo: 'texto', valor: texto }] },
+      body,
     )
     return data.post as Post
   },

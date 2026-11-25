@@ -15,6 +15,12 @@ export const publicHttp = axios.create(baseConfig)
 
 // Injeta o access token (quando há sessão) — rotas protegidas exigem "Authorization: Bearer".
 http.interceptors.request.use((config) => {
+  // O cabeçalho JSON padrão não pode ser usado com FormData: o navegador precisa
+  // definir multipart/form-data com o boundary correspondente ao corpo.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers.delete('Content-Type')
+  }
+
   const token = useSessionTokenStore().accessToken
   if (token) config.headers.set('Authorization', `Bearer ${token}`)
   else config.headers.delete('Authorization')

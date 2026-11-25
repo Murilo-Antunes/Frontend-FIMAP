@@ -261,9 +261,20 @@ onBeforeUnmount(() => controller?.abort())
       <!-- Post -->
       <article v-else-if="post" :class="[ui.card, 'space-y-4 p-5']">
         <header class="flex items-center gap-3">
-          <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+          <RouterLink
+            :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+            :aria-label="`Acessar o perfil de ${name}`"
+            class="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+          >
+            <UserAvatar :src="post.autor?.foto_perfil" :name="name" size="md" />
+          </RouterLink>
           <div class="min-w-0">
-            <h1 class="truncate text-[15px] font-semibold leading-tight text-neutral-900">{{ name }}</h1>
+            <RouterLink
+              :to="{ name: 'community-public-profile', params: { username: post.autor?.username_social } }"
+              class="block truncate text-[15px] font-semibold leading-tight text-neutral-900 outline-none hover:underline focus-visible:underline"
+            >
+              {{ name }}
+            </RouterLink>
             <p class="truncate text-[11px] text-neutral-400">
               <span v-if="handle">{{ handle }} • </span>
               <time :datetime="post.data_criacao" :title="formatFullDate(post.data_criacao)">

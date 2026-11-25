@@ -57,7 +57,7 @@ export interface NivelInfo {
   xp_necessario: number
 }
 
-export type AbaPerfil = 'publicacoes' | 'respostas' | 'salvos' | 'arquivados'
+export type AbaPerfil = 'publicacoes' | 'respostas' | 'salvos'
 
 /* ----------------------- Configurações sociais ----------------------- */
 

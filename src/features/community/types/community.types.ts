@@ -66,6 +66,8 @@ export interface Post {
   total_curtidas: number
   total_comentarios: number
   curtiu: boolean
+  /** Estado do post para o usuário autenticado, retornado também na listagem de salvos. */
+  salvo?: boolean
 }
 
 /** Resposta de POST /alternar-curtida-* (existente). */

@@ -15,6 +15,8 @@ export const communityEndpoints = {
   feed: `${POSTS}/feed`,
   createPost: `${POSTS}/criar`,
   postById: (idPost: number) => `${POSTS}/buscar/${idPost}`,
+  savePost: `${POSTS}/salvar`,
+  savedPosts: (idUsuario: number) => `${POSTS}/salvos/${idUsuario}`,
 
   togglePostLike: `${CURTIDAS}/alternar-curtida-post`,
   toggleCommentLike: `${CURTIDAS}/alternar-curtida-comentario`,

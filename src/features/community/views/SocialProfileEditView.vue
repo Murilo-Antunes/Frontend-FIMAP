@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isCancel } from 'axios'
 import { useDebounceFn } from '@vueuse/core'
-import { AtSign, Camera, Check, CirclePlus, Contact, Loader2, MapPin, Save, Trash2, X, AlertCircle } from 'lucide-vue-next'
+import { ArrowLeft, AtSign, Camera, Check, CirclePlus, Contact, Loader2, MapPin, Save, Trash2, X, AlertCircle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSocialProfileStore } from '@/stores/social-profile.store'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -55,8 +55,17 @@ const submitting = ref(false)
 const idUsuario = computed(() => Number(auth.usuario?.id))
 const isCreate = computed(() => mode.value === 'create')
 const pageTitle = computed(() => (isCreate.value ? 'Criar Perfil Social' : 'Editar Perfil Social'))
-const topButtonLabel = computed(() => (isCreate.value ? 'Confirmar' : 'Salvar'))
 const bottomButtonLabel = computed(() => (isCreate.value ? 'Confirmar' : 'Salvar Alterações'))
+
+function goBack(): void {
+  const back = window.history.state?.back
+  if (typeof back === 'string' && back.split('?')[0] === '/comunidade/perfil') {
+    void router.back()
+    return
+  }
+
+  void router.replace({ name: 'community-profile' })
+}
 
 /** Destino após criar o perfil (ignora redirects que saiam do app). */
 const redirectTo = computed(() => {
@@ -370,16 +379,19 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-neutral-900 outline-
 <template>
   <div :class="ui.page">
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <button
+      type="button"
+      aria-label="Voltar para a página anterior"
+      class="mb-3 rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+      @click="goBack"
+    >
+      <ArrowLeft class="size-5" aria-hidden="true" />
+    </button>
     <header class="flex items-end justify-between gap-4">
       <div>
         <p :class="ui.eyebrow">Comunidade Fimap</p>
         <h1 class="text-xl font-semibold text-neutral-900">{{ pageTitle }}</h1>
       </div>
-      <button v-if="loadStatus === 'ready'" type="submit" form="social-profile-form" :class="pillButton" :disabled="!canSubmit">
-        <Loader2 v-if="submitting" class="size-4 animate-spin" aria-hidden="true" />
-        <Check v-else class="size-4" aria-hidden="true" />
-        {{ topButtonLabel }}
-      </button>
     </header>
 
     <!-- Carregando -->
@@ -412,7 +424,7 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-neutral-900 outline-
       <div
         v-if="successMessage"
         role="status"
-        class="flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+        class="flex items-center gap-2 rounded-xl bg-black px-4 py-3 text-sm text-white"
       >
         <Check class="size-4 shrink-0" aria-hidden="true" />
         {{ successMessage }}
