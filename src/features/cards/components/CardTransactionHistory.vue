@@ -83,10 +83,9 @@ function hora(t: TransacaoCartao): string | null {
 
             <div class="flex-none text-right">
               <p
-                class="text-sm font-semibold"
-                :class="t.tipo === 'CREDITO' ? 'text-emerald-600' : 'text-neutral-900'"
+                class="text-sm font-semibold text-neutral-900"
               >
-                {{ t.tipo === 'CREDITO' ? '+ ' : '' }}{{ formatarMoeda(t.valor) }}
+                {{ t.tipo === 'CREDITO' ? '− ' : '' }}{{ formatarMoeda(t.valor) }}
               </p>
               <p v-if="hora(t)" class="text-xs text-neutral-400">{{ hora(t) }}</p>
             </div>
