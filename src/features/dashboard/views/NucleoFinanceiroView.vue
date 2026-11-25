@@ -4,7 +4,6 @@ import { useConnectionStore } from '@/stores/connection.store';
 import { financeService } from '../services/finance.service';
 import type { SaldoNucleoData, CartoesData, ContasConectadasData, InvestimentosData, EmprestimosData } from '../types/finance.types';
 import { Eye, EyeOff, TrendingUp, CreditCard, Landmark, Handshake, Lock, Check } from 'lucide-vue-next';
-import RecommendationCard from '../components/RecommendationCard.vue';
 
 const connectionStore = useConnectionStore();
 
@@ -116,7 +115,7 @@ onMounted(async () => {
 
     <div v-else class="space-y-8">
       <!-- Top Section Grid -->
-      <div class="grid grid-cols-1 gap-6 lg:has-[>aside]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div class="grid grid-cols-1 gap-6">
         <!-- Patrimônio Card (2 colunas) -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative space-y-4">
           <div class="flex items-center justify-between text-gray-400">
@@ -158,8 +157,6 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-
-        <RecommendationCard area="nucleo" />
       </div>
 
       <!-- Seção Categorias do Núcleo -->
