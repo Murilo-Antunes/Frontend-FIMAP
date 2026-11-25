@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useConnectionStore } from '@/stores/connection.store';
+import { useHiddenValues } from '@/composables/useHiddenValues';
 import { financeService } from '../services/finance.service';
 import type { SaldoNucleoData, CartoesData, ContasConectadasData, InvestimentosData, EmprestimosData } from '../types/finance.types';
 import { Eye, EyeOff, TrendingUp, CreditCard, Landmark, Handshake, Lock, Check } from 'lucide-vue-next';
@@ -8,7 +9,7 @@ import RecommendationCard from '../components/RecommendationCard.vue';
 
 const connectionStore = useConnectionStore();
 
-const showValues = ref(true);
+const { hidden, toggle: toggleHiddenValues, mask } = useHiddenValues();
 const loading = ref(true);
 const error = ref<string | null>(null);
 
@@ -20,6 +21,10 @@ const emprestimos = ref<EmprestimosData | null>(null);
 
 function formatCurrency(val: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+}
+
+function displayCurrency(val: number): string {
+  return mask(formatCurrency(val));
 }
 
 // Cálculos dinâmicos para o patrimônio e barras de progresso
@@ -45,6 +50,12 @@ const hasCartoes = computed(() => Boolean(cartoes.value?.cartoes?.length));
 const hasContasConectadas = computed(() => Boolean(contas.value?.contas?.length));
 const hasInvestimentosAtivos = computed(() => Boolean(investimentos.value?.investimentos?.length));
 const hasEmprestimosAtivos = computed(() => Boolean(emprestimos.value?.emprestimos?.length));
+
+function isCartaoDeCredito(conta: { tipo?: string; subtipo?: string }): boolean {
+  const tipo = conta.tipo?.trim().toUpperCase();
+  const subtipo = conta.subtipo?.trim().toUpperCase();
+  return tipo === 'CREDIT' || tipo === 'CREDIT_CARD' || subtipo === 'CREDIT_CARD';
+}
 
 onMounted(async () => {
   try {
@@ -75,10 +86,11 @@ onMounted(async () => {
       total: cartoesRes.reduce((acc, curr) => acc + curr.total, 0),
       cartoes: cartoesRes.flatMap(r => r.cartoes)
     };
+    const contasBancarias = contasRes.flatMap(r => r.contas).filter(conta => !isCartaoDeCredito(conta));
     contas.value = {
       atualizando: contasRes.some(r => r.atualizando),
-      total: contasRes.reduce((acc, curr) => acc + curr.total, 0),
-      contas: contasRes.flatMap(r => r.contas)
+      total: contasBancarias.length,
+      contas: contasBancarias
     };
     investimentos.value = {
       atualizando: investRes.some(r => r.atualizando),
@@ -121,15 +133,15 @@ onMounted(async () => {
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative space-y-4">
           <div class="flex items-center justify-between text-gray-400">
             <span class="text-xs font-semibold tracking-wider uppercase">Patrimônio sob Gestão</span>
-            <button @click="showValues = !showValues" class="hover:text-gray-600">
-              <Eye v-if="showValues" class="w-4 h-4" />
+            <button @click="toggleHiddenValues" class="hover:text-gray-600">
+              <Eye v-if="!hidden" class="w-4 h-4" />
               <EyeOff v-else class="w-4 h-4" />
             </button>
           </div>
 
           <div class="flex items-baseline space-x-3">
             <h2 class="text-3xl font-extrabold text-gray-900">
-              {{ showValues ? formatCurrency(patrimonioTotal) : 'R$ ••••••' }}
+              {{ displayCurrency(patrimonioTotal) }}
             </h2>
           </div>
 
@@ -149,11 +161,11 @@ onMounted(async () => {
             <div class="flex items-center space-x-6 text-xs text-gray-600">
               <span class="flex items-center">
                 <span class="w-2 h-2 rounded-full bg-indigo-600 mr-1.5"></span>
-                Contas {{ percentualContas }}%
+                Contas {{ hidden ? '•••' : percentualContas }}%
               </span>
               <span class="flex items-center">
                 <span class="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span>
-                Investimentos {{ percentualInvestimentos }}%
+                Investimentos {{ hidden ? '•••' : percentualInvestimentos }}%
               </span>
             </div>
           </div>
@@ -184,11 +196,11 @@ onMounted(async () => {
             <div v-if="hasCartoes" class="bg-gray-50 p-4 rounded-xl space-y-1">
               <div class="flex justify-between items-baseline">
                 <span class="text-xs text-gray-500">Total Faturas Abertas</span>
-                <span class="text-base font-bold text-gray-900">{{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.faturaAberta, 0)) }}</span>
+                <span class="text-base font-bold text-gray-900">{{ displayCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.faturaAberta, 0)) }}</span>
               </div>
               <div class="flex justify-between text-[11px] text-gray-400">
-                <span>Limite Total: {{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limite, 0)) }}</span>
-                <span class="text-emerald-600 font-medium">Disponível Total: {{ formatCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limiteDisponivel, 0)) }}</span>
+                <span>Limite Total: {{ displayCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limite, 0)) }}</span>
+                <span class="text-emerald-600 font-medium">Disponível Total: {{ displayCurrency(cartoes!.cartoes.reduce((acc, c) => acc + c.limiteDisponivel, 0)) }}</span>
               </div>
             </div>
             <div v-else class="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 text-center text-sm text-gray-500">
@@ -210,12 +222,12 @@ onMounted(async () => {
 
             <div v-if="hasContasConectadas" class="space-y-2">
               <span class="text-xs text-gray-400 block">Saldo Líquido Disponível</span>
-              <p class="text-2xl font-extrabold text-gray-900">{{ formatCurrency(saldo?.saldoTotal || 0) }}</p>
+              <p class="text-2xl font-extrabold text-gray-900">{{ displayCurrency(saldo?.saldoTotal || 0) }}</p>
 
               <div class="space-y-1 pt-1">
                 <div v-for="c in contas?.contas || []" :key="c.id" class="flex items-center text-xs text-gray-600">
                   <span class="w-1.5 h-1.5 rounded-full bg-gray-900 mr-2"></span>
-                  <span class="font-medium mr-1">{{ c.nome }}:</span> {{ formatCurrency(c.saldo) }}
+                  <span class="font-medium mr-1">{{ c.nome }}:</span> {{ displayCurrency(c.saldo) }}
                 </div>
               </div>
             </div>
@@ -240,7 +252,7 @@ onMounted(async () => {
 
             <div v-if="hasInvestimentosAtivos" class="space-y-2">
               <span class="text-xs text-gray-400 block">Posição Total Aplicada</span>
-              <p class="text-2xl font-extrabold text-gray-900">{{ formatCurrency(totalInvestimentos) }}</p>
+              <p class="text-2xl font-extrabold text-gray-900">{{ displayCurrency(totalInvestimentos) }}</p>
 
               <!-- Barra de Distribuição de Investimentos -->
               <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden flex my-2">
@@ -284,11 +296,11 @@ onMounted(async () => {
             <div class="bg-gray-50 p-4 rounded-xl flex justify-between items-center">
               <div>
                 <span class="text-xs text-gray-400 block">Total Contratado</span>
-                <span class="font-bold text-sm text-gray-900">{{ formatCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.valorContratado, 0)) }}</span>
+                <span class="font-bold text-sm text-gray-900">{{ displayCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.valorContratado, 0)) }}</span>
               </div>
               <div class="text-right">
                 <span class="text-xs text-gray-400 block">Total Devedor</span>
-                <span class="font-bold text-sm text-rose-600">{{ formatCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.saldoDevedor, 0)) }}</span>
+                <span class="font-bold text-sm text-rose-600">{{ displayCurrency(emprestimos!.emprestimos.reduce((acc, e) => acc + e.saldoDevedor, 0)) }}</span>
               </div>
             </div>
 
@@ -321,7 +333,7 @@ onMounted(async () => {
           <div>
             <span class="text-xs text-gray-400 block">Saldo Guardado</span>
             <div class="flex items-center justify-between">
-              <span class="text-2xl font-extrabold text-gray-900">{{ formatCurrency(totalInvestimentos) }}</span>
+              <span class="text-2xl font-extrabold text-gray-900">{{ displayCurrency(totalInvestimentos) }}</span>
               <span class="px-2.5 py-1 text-[11px] bg-emerald-50 text-emerald-700 rounded-full font-medium">Meta Concluída</span>
             </div>
           </div>
