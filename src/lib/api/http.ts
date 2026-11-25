@@ -13,6 +13,8 @@ export const http = axios.create(baseConfig)
 // Isolated client for public auth routes; it never receives the session token.
 export const publicHttp = axios.create(baseConfig)
 
+export const browserSessionHttp = axios.create({ ...baseConfig, withCredentials: true, timeout: 5_000 })
+
 // Injeta o access token (quando há sessão) — rotas protegidas exigem "Authorization: Bearer".
 http.interceptors.request.use((config) => {
   // O cabeçalho JSON padrão não pode ser usado com FormData: o navegador precisa
@@ -42,9 +44,15 @@ http.interceptors.response.use(
         import('@/stores/auth.store'),
         import('@/router'),
       ])
-      useSessionTokenStore().clear()
-      await useAuthStore().logout()
-      await router.replace({ name: 'login' })
+      const session = useSessionTokenStore()
+      if (error.config.headers.get('Authorization') !== `Bearer ${session.accessToken}`) {
+        return Promise.reject(error)
+      }
+
+      const currentRoute = router.currentRoute.value
+      const query = currentRoute.name === 'recomendacoes' ? { redirect: currentRoute.fullPath } : undefined
+      useAuthStore().clearSession()
+      await router.replace({ name: 'login', query })
     }
     return Promise.reject(error)
   },

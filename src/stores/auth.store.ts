@@ -11,47 +11,52 @@ export const useAuthStore = defineStore('auth', () => {
   const usuario = ref<Usuario | null>(null)
   const status = ref<SessionStatus>('desconhecido')
   const sessionToken = useSessionTokenStore()
+  let browserSession = false
+  let restoring: Promise<void> | undefined
+  let ending: Promise<void> | undefined
 
   const isAuthenticated = computed(() => status.value === 'autenticado')
 
   function clearSession() {
+    browserSession = false
     sessionToken.clear()
     usuario.value = null
     status.value = 'anonimo'
   }
 
-  /**
-   * Tenta restaurar a sessão ao abrir/recarregar a aplicação.
-   * Sem persistência server-side: sempre resulta em `anonimo`.
-   * Mantemos a chamada para facilitar a transição quando o backend implementar sessão.
-   */
-  async function restoreSession() {
-    try {
-      const current = await authService.session()
-      if (current) {
-        usuario.value = current
-        status.value = 'autenticado'
-      } else {
-        clearSession()
-      }
-    } catch {
-      clearSession()
-    }
+  function setSession(current: Usuario, token: string, persisted: boolean) {
+    browserSession = persisted
+    sessionToken.setToken(token)
+    usuario.value = current
+    status.value = 'autenticado'
+  }
+
+  function restoreSession(): Promise<void> {
+    if (status.value !== 'desconhecido') return Promise.resolve()
+    restoring ??= authService.session()
+      .then(({ usuario: current, access_token }) => {
+        if (status.value === 'desconhecido') setSession(current, access_token, true)
+      })
+      .catch(() => {
+        if (status.value === 'desconhecido') clearSession()
+      })
+      .finally(() => { restoring = undefined })
+    return restoring
   }
 
   async function login(payload: LoginPayload) {
     const { usuario: logged, access_token: accessToken } = await authService.login(payload)
-    sessionToken.setToken(accessToken)
-    usuario.value = logged
-    status.value = 'autenticado'
+    const persisted = await authService.createBrowserSession(accessToken)
+    setSession(logged, accessToken, persisted)
   }
 
-  async function logout() {
-    try {
-      await authService.logout()
-    } finally {
+  function logout(): Promise<void> {
+    if (!browserSession) {
       clearSession()
+      return Promise.resolve()
     }
+    ending ??= authService.logout().then(clearSession).finally(() => { ending = undefined })
+    return ending
   }
 
   return { usuario, status, isAuthenticated, restoreSession, login, logout, clearSession }

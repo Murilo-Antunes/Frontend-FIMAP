@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { onKeyStroke, useScrollLock } from '@vueuse/core'
 import { ChevronRight, LogOut } from 'lucide-vue-next'
@@ -16,6 +16,8 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const signingOut = ref(false)
+const signOutError = ref(false)
 
 // Com o menu aberto, só o menu rola (o conteúdo da página fica travado)
 const scrollLocked = useScrollLock(document.body)
@@ -33,9 +35,18 @@ onKeyStroke('Escape', () => {
 const isActive = (item: NavItem) => Boolean(item.to && route.path.startsWith(item.to))
 
 async function onLogout() {
-  emit('close')
-  await auth.logout()
-  await router.replace({ name: 'login' })
+  if (signingOut.value) return
+  signingOut.value = true
+  signOutError.value = false
+  try {
+    await auth.logout()
+    emit('close')
+    await router.replace({ name: 'login' })
+  } catch {
+    signOutError.value = true
+  } finally {
+    signingOut.value = false
+  }
 }
 </script>
 
@@ -126,9 +137,13 @@ async function onLogout() {
     </nav>
 
     <div class="border-t border-neutral-200 p-4">
+      <p v-if="signOutError" role="alert" class="mb-2 text-xs text-red-700">
+        Não foi possível encerrar a sessão. Tente novamente.
+      </p>
       <button
         type="button"
-        class="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-50 text-xs font-medium text-red-600 transition hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-red-600"
+        class="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-50 text-xs font-medium text-red-600 transition hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-red-600 disabled:opacity-60"
+        :disabled="signingOut"
         @click="onLogout"
       >
         <LogOut :size="16" aria-hidden="true" />

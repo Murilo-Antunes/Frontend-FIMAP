@@ -19,6 +19,7 @@ const connection = useConnectionStore()
 
 const step = ref<Step>('idle')
 const errorMessage = ref('')
+const signingOut = ref(false)
 /** Item criado no widget cujo registro no backend falhou (permite tentar de novo sem refazer o login no banco). */
 const pendingItemId = ref<string | null>(null)
 /** consentId retornado pelo Pluggy Connect */
@@ -28,7 +29,7 @@ const pendingNomeInstituicao = ref<string | null>(null)
 
 let widget: PluggyConnectInstance | null = null
 
-const busy = computed(() => step.value !== 'idle')
+const busy = computed(() => step.value !== 'idle' || signingOut.value)
 const buttonLabel = computed(() => {
   if (step.value === 'token') return 'Preparando conexão…'
   if (step.value === 'widget') return 'Conexão em andamento…'
@@ -123,13 +124,21 @@ async function onConnect() {
 
 /** Com conta conectada volta ao app; sem conta, não há para onde ir: encerra a sessão. */
 async function onCancel() {
-  if (step.value === 'saving') return
+  if (step.value === 'saving' || signingOut.value) return
   if (connection.hasConnection) {
     await router.replace({ name: 'dashboard' })
     return
   }
-  await auth.logout()
-  await router.replace({ name: 'login' })
+  signingOut.value = true
+  errorMessage.value = ''
+  try {
+    await auth.logout()
+    await router.replace({ name: 'login' })
+  } catch {
+    errorMessage.value = 'Não foi possível encerrar a sessão. Tente novamente.'
+  } finally {
+    signingOut.value = false
+  }
 }
 
 onBeforeUnmount(() => widget?.destroy?.())
@@ -174,7 +183,7 @@ onBeforeUnmount(() => widget?.destroy?.())
         <button
           type="button"
           class="h-[50px] w-full rounded-xl border border-neutral-200 bg-white text-sm font-medium transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="step === 'saving'"
+          :disabled="step === 'saving' || signingOut"
           @click="onCancel"
         >
           Cancelar

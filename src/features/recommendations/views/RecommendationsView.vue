@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleDollarSign, Clock3, Layers3, NotebookPen, Sparkles, TrendingUp, X } from 'lucide-vue-next'
+import { CircleDollarSign, Clock3, Compass, Layers3, NotebookPen, Sparkles, TrendingUp, X } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { toApiError } from '@/lib/api/types/api-error'
 import { useSessionTokenStore } from '@/stores/session-token.store'
@@ -20,12 +20,13 @@ const updatedAt = ref<number>()
 const hasLoadedMore = ref(false)
 const filters: { key: RecommendationType | 'todas'; label: string }[] = [
   { key: 'todas', label: 'Todas' },
+  { key: 'geral', label: 'Orientação geral' },
   { key: 'economia_mensal', label: 'Economia mensal' },
   { key: 'investimento', label: 'Investimentos' },
   { key: 'planejamento', label: 'Planejamento' },
   { key: 'outros', label: 'Outras oportunidades' },
 ]
-const icons = { economia_mensal: CircleDollarSign, investimento: TrendingUp, planejamento: NotebookPen, outros: Sparkles }
+const icons = { geral: Compass, economia_mensal: CircleDollarSign, investimento: TrendingUp, planejamento: NotebookPen, outros: Sparkles }
 const count = new Intl.NumberFormat('pt-BR')
 const updatedLabel = computed(() => updatedAt.value
   ? new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(updatedAt.value) : '—')
@@ -135,7 +136,8 @@ function reset() {
   void load()
 }
 function refreshWhenVisible() {
-  if (!document.hidden && !hasLoadedMore.value && !dialog.value?.open) void load()
+  if (document.hidden || hasLoadedMore.value || dialog.value?.open || (error.value && retryAppend.value)) return
+  void load()
 }
 watch(() => session.accessToken, () => { clearPreview(); reset() })
 watch(filter, reset)
@@ -170,12 +172,11 @@ onUnmounted(() => {
         <div class="max-w-2xl">
           <h2 class="text-sm font-semibold">Teste com dados simulados</h2>
           <p class="mt-1 text-xs leading-5 text-neutral-500">
-            Envia ao Worker um exemplo de mensalidade de R$ 100 para R$ 120 e mostra a resposta aqui.
-            Não consulta sua conta bancária e não salva no banco.
+            Usa R$ 400 em gastos simulados para verificar a orientação geral. O cartão é temporário.
           </p>
         </div>
         <button type="button" :disabled="previewLoading" class="rounded-xl bg-black px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50" @click="runPreview">
-          {{ previewLoading ? 'Aguardando resposta…' : 'Testar resposta da IA' }}
+          {{ previewLoading ? 'Aguardando resposta…' : 'Testar orientação geral' }}
         </button>
       </div>
       <p v-if="previewError" role="alert" class="text-sm text-red-700">{{ previewError }}</p>
@@ -243,7 +244,9 @@ onUnmounted(() => {
       <Layers3 class="mx-auto size-8 text-neutral-400" aria-hidden="true" />
       <h2 class="mt-4 text-base font-medium">Nenhuma oportunidade por aqui ainda</h2>
       <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-500">
-        As recomendações aparecem quando a análise encontra uma mudança relevante nos dados sincronizados.
+        {{ filter === 'todas' || filter === 'geral'
+          ? 'A orientação geral aparece após a primeira análise dos seus dados do Open Finance.'
+          : 'Ainda não há recomendações nesta categoria.' }}
       </p>
     </div>
 

@@ -35,8 +35,14 @@ async function onSubmit() {
   submitting.value = true
   try {
     await auth.login(data)
-    // Não redireciona diretamente - deixa o router e os guards decidirem
-    // O connectionGuard vai verificar se tem conexão e redirecionar adequadamente
+    const redirect = route.query.redirect
+    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      const destination = router.resolve(redirect)
+      if (destination.name === 'recomendacoes') {
+        await router.replace({ name: 'recomendacoes', query: destination.query, hash: destination.hash })
+        return
+      }
+    }
     await router.push({ name: 'dashboard' })
   } catch (error) {
     const apiError = toApiError(error)

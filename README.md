@@ -7,6 +7,7 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 ## Oportunidades da IA
 
 A página `/recomendacoes` reúne todas as recomendações do usuário, atuais e antigas.
+O cartão de orientação geral fica no topo e é atualizado pelo back-end a cada rodada com dados válidos.
 Os cartões aparecem somente nessa página, com tipo e prévia de até 180 caracteres.
 Clicar ou pressionar Enter no cartão abre a mensagem completa em um diálogo acessível.
 Não existem botões de ação dentro dos cartões.
@@ -25,5 +26,12 @@ A API fornece lista paginada, filtros por tipo e contagens reais. O texto comple
 o limite de 180 caracteres afeta somente a prévia. Os registros não desaparecem da lista
 quando o destaque expira. A atualização automática ocorre a cada minuto na primeira página
 visível; ao carregar páginas antigas, a navegação da lista é preservada.
+Em desenvolvimento, o botão **Testar orientação geral** gera um cartão temporário com dados simulados.
 
 `npm run build` verifica TypeScript e gera os arquivos de produção.
+
+## Sessão ao atualizar a página
+
+Inicie o FimapBack-F com `/v1/openfinance/usuario/sessao` e entre novamente para iniciar a sessão com cookie. No ambiente local, abra o frontend e a API com o mesmo hostname, por exemplo `localhost` nas duas URLs.
+
+Em produção, sirva o frontend e a API por HTTPS no mesmo site e configure `BROWSER_SESSION_ORIGINS` no back-end com as origens exatas do frontend, separadas por vírgula. A sessão usa a validade do JWT configurada em `JWT_EXPIRATION`.

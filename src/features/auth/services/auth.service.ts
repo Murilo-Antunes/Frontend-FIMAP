@@ -1,4 +1,4 @@
-import { http, publicHttp } from '@/lib/api/http'
+import { browserSessionHttp, http, publicHttp } from '@/lib/api/http'
 import type {
   ApiSuccessResponse,
   ForgotPasswordResponse,
@@ -6,11 +6,12 @@ import type {
   LoginResponse,
   RegisterPayload,
   RegisterUserResponse,
-  Usuario,
 } from '../types/auth.types'
 import { obterInformacoesDispositivo } from './device.service'
 
 const BASE = '/v1/openfinance/usuario'
+const BROWSER_SESSION = `${BASE}/sessao`
+type BrowserSession = Pick<LoginResponse, 'sucesso' | 'usuario' | 'access_token'>
 
 export const authService = {
 
@@ -53,12 +54,28 @@ export const authService = {
     return data
   },
 
-  async session(): Promise<Usuario | null> {
-    return null
+  async createBrowserSession(accessToken: string): Promise<boolean> {
+    try {
+      const response = await browserSessionHttp.post(BROWSER_SESSION, undefined, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      return response.status === 204
+    } catch {
+      return false
+    }
+  },
+
+  async session(): Promise<BrowserSession> {
+    const { data } = await browserSessionHttp.get<BrowserSession>(BROWSER_SESSION)
+    if (!data?.sucesso || !Number.isSafeInteger(data.usuario?.id) || data.usuario.id <= 0 ||
+      typeof data.access_token !== 'string' || !data.access_token) {
+      throw new Error('Sessão inválida.')
+    }
+    return data
   },
 
   async logout(): Promise<void> {
-    // Sem sessão server-side: nada a invalidar na API.
+    await browserSessionHttp.delete(BROWSER_SESSION)
   },
 
   // ---------------------------------------------------------------------------
