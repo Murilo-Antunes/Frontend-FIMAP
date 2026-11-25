@@ -80,6 +80,10 @@ function adicionarValor(valor: number) {
   valorDesejado.value = Number(valorDesejado.value) + valor
 }
 
+function subtrairValor(valor: number) {
+  valorDesejado.value = Math.max(0, (Number(valorDesejado.value) || 0) - valor)
+}
+
 function aoAtualizarCdi({ id, percentualCdi }: { id: number; percentualCdi: number }) {
   const conta = contas.value.find((c) => c.id === id)
   if (conta) conta.percentualCdi = percentualCdi
@@ -226,6 +230,16 @@ async function confirmar() {
               @click="adicionarValor(chip)"
             >
               + R$ {{ chip.toLocaleString('pt-BR') }}
+            </button>
+            <button
+              v-for="chip in [1000, 5000, 10000]"
+              :key="`subtract-${chip}`"
+              type="button"
+              class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+              :aria-label="`Subtrair R$ ${chip.toLocaleString('pt-BR')} do valor total desejado`"
+              @click="subtrairValor(chip)"
+            >
+              − R$ {{ chip.toLocaleString('pt-BR') }}
             </button>
           </div>
         </div>

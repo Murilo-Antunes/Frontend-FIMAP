@@ -4,10 +4,9 @@ import { useRouter } from 'vue-router'
 import { useConnectionStore } from '@/stores/connection.store'
 import { toApiError } from '@/lib/api/types/api-error'
 import { loansService } from '../services/loans.service'
-import { buildMockPortabilityOpportunity, mapLoan, mapLoanDetail } from '../services/loans.mapper'
+import { mapLoan, mapLoanDetail } from '../services/loans.mapper'
 import type { Loan, LoanInstallment } from '../types/loans.types'
 import LoanOverviewCard from '../components/LoanOverviewCard.vue'
-import LoanOpportunityCard from '../components/LoanOpportunityCard.vue'
 import LoanInstallmentRow from '../components/LoanInstallmentRow.vue'
 
 const router = useRouter()
@@ -22,9 +21,6 @@ const loading = ref(true)
 const errorMessage = ref<string | null>(null)
 const syncing = ref(false)
 const loans = ref<LoanWithPreview[]>([])
-
-// MOCK — ver aviso enviado junto com este código.
-const opportunity = buildMockPortabilityOpportunity()
 
 let controller: AbortController | null = null
 
@@ -80,10 +76,6 @@ function goToHistory(loanId: string) {
   router.push({ name: 'loan-history', params: { id: loanId } })
 }
 
-function handleOpportunityAction() {
-  // TODO: abrir o Simulador Financeiro quando a funcionalidade estiver pronta.
-}
-
 onMounted(loadLoans)
 onBeforeUnmount(() => controller?.abort())
 </script>
@@ -106,15 +98,8 @@ onBeforeUnmount(() => controller?.abort())
         Ainda sincronizando os dados dos seus empréstimos via Open Finance. Alguns valores podem demorar a aparecer.
       </p>
 
-      <div class="mb-8 grid gap-6 lg:grid-cols-2">
+      <div class="mb-8">
         <LoanOverviewCard v-if="loans.length > 0" :loan="loans[0].loan" />
-        <LoanOpportunityCard
-          eyebrow="Oportunidade detectada por IA"
-          icon="sparkles"
-          eyebrow-variant="caps"
-          :opportunity="opportunity"
-          @primary-action="handleOpportunityAction"
-        />
       </div>
 
       <div class="mb-8 rounded-2xl border border-neutral-200 bg-white p-6">

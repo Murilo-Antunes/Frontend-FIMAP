@@ -16,8 +16,10 @@ const props = withDefaults(
      * final do número). Com `false` mostra o design completo do cartão.
      */
     compacto?: boolean
+    /** Oculta a data de vencimento em contextos de seleção de cartão. */
+    mostrarVencimento?: boolean
   }>(),
-  { titular: null, compacto: false },
+  { titular: null, compacto: false, mostrarVencimento: true },
 )
 
 const tema = computed(() => resolverTema(props.cartao.tema))
@@ -90,7 +92,7 @@ const vencimento = computed(() => formatarDiaMes(props.cartao.vencimentoFatura))
         </div>
         <span v-else />
 
-        <span v-if="vencimento" class="card-face__pill card-face__pill--exp">VENCE {{ vencimento }}</span>
+        <span v-if="mostrarVencimento && vencimento" class="card-face__pill card-face__pill--exp">VENCE {{ vencimento }}</span>
       </div>
 
       <div class="card-face__row card-face__row--end">
