@@ -10,7 +10,7 @@ import type { FinancialAction } from '../schemas/financial-action.schemas'
 import type { Chat } from '../types/chat.types'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
-  error, transcript, filtered, form, canSend, atLimit, managing, managementError,
+  error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
   confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
@@ -146,7 +146,7 @@ function adjustFinancialAction(proposal: FinancialAction) {
           <div class="min-w-0 flex-1"><h2 class="truncate text-sm font-semibold">{{ selected?.nome ?? 'Fimap Copilot' }}</h2><p class="mt-1 text-xs text-neutral-500">{{ selected ? `Iniciada em ${dateLabel(selected.data_criacao)}` : 'Seu assistente financeiro' }}</p></div>
           <button v-if="!historyOpen" class="icon-button" :disabled="cannotCreate" aria-label="Nova conversa" :title="atLimit ? limitMessage : 'Nova conversa'" @click="newChat"><Plus :size="20" /></button>
         </header>
-        <div :ref="element => { transcript = element as HTMLElement | null }" class="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8" role="log" aria-label="Mensagens da conversa" :aria-busy="sending || loadingMessages">
+        <div :ref="element => { transcript = element as HTMLElement | null }" class="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8" role="log" aria-label="Mensagens da conversa" :aria-busy="sending || loadingMessages" @scroll="updateTranscriptFollow">
           <p v-if="loadingMessages" role="status" class="text-center text-sm text-neutral-500">Carregando mensagens...</p>
           <div v-else-if="!messages.length && !error" class="flex h-full flex-col items-center justify-center px-4 text-center">
             <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100"><Bot :size="28" /></div>

@@ -28,6 +28,7 @@ export function useChat() {
   const historyError = ref('')
   const error = ref('')
   const transcript = ref<HTMLElement | null>(null)
+  const shouldFollowTranscript = ref(true)
   const cache = new Map<number, ChatMessage[]>()
   const form = useZodForm(chatMessageSchema)
   let session = new AbortController()
@@ -40,6 +41,12 @@ export function useChat() {
   const describeError = (cause: unknown) => axios.isAxiosError(cause)
     ? toApiError(cause).mensagem
     : cause instanceof Error ? cause.message : toApiError(cause).mensagem
+
+  function updateTranscriptFollow() {
+    const element = transcript.value
+    if (!element) return
+    shouldFollowTranscript.value = element.scrollHeight - element.scrollTop - element.clientHeight < 48
+  }
 
   async function load() {
     if (!auth.isAuthenticated || loading.value || managing.value) return
@@ -254,13 +261,13 @@ export function useChat() {
   watch([() => messages.value.map(message => message.conteudo).join(''), lastAction], async ([, action], [, previousAction]) => {
     await nextTick()
     const element = transcript.value
-    if (!element) return
+    if (!element || !shouldFollowTranscript.value) return
     const card = action && action !== previousAction ? element.querySelector(`[data-financial-action="${action}"]`) : null
     const message = card?.closest('[data-chat-message]')
     const top = message
       ? element.scrollTop + message.getBoundingClientRect().top - element.getBoundingClientRect().top - 16
       : element.scrollHeight
-    element.scrollTo({ top, behavior: 'smooth' })
+    element.scrollTo({ top, behavior: 'auto' })
   })
   onScopeDispose(() => { session.abort(); detail?.abort() })
 
@@ -268,6 +275,6 @@ export function useChat() {
     && !loading.value && !loadingMessages.value && !historyError.value
     && (selectedId.value === null ? !atLimit.value : cache.has(selectedId.value)))
   return { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
-    error, transcript, filtered, form, canSend, atLimit, managing, managementError,
+    error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
     confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat }
 }
