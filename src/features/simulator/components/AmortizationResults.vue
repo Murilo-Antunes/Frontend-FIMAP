@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ChartLine, Percent, Sparkles, TrendingDown } from 'lucide-vue-next'
+import { ChartLine, Percent, TrendingDown } from 'lucide-vue-next'
 import SimCard from './SimCard.vue'
 import ChartPanel from './ChartPanel.vue'
 import { buildAmortizationChart } from '../lib/chart-options'
@@ -34,7 +34,6 @@ const horizonYears = computed(() => (props.result ? Math.ceil(props.result.meses
           id="amo-total-title"
           class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider"
         >
-          <Sparkles class="size-4" aria-hidden="true" />
           Inteligência Amortizadora
         </h2>
         <span class="text-xs text-neutral-400">Projeção {{ sistema }} Real</span>

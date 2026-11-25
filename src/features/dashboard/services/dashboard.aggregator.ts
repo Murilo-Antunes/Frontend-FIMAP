@@ -3,6 +3,10 @@ import type { ResumoFinanceiroApi, EvolucaoItemApi } from '../types/openfinance.
 import { buildOverview } from './dashboard.mapper'
 
 export function aggregateOverviews(apis: ResumoFinanceiroApi[]): DashboardOverview {
+  const soma = (read: (api: ResumoFinanceiroApi) => number | null | undefined) =>
+    apis.reduce((sum, api) => sum + (read(api) ?? 0), 0)
+  const variacao = (atual: number, anterior: number): number | null =>
+    anterior > 0 ? ((atual - anterior) / anterior) * 100 : null
   // Consolidar dados de evolução
   const evolutionMap = new Map<string, { receitas: number; despesas: number }>()
   for (const api of apis) {
@@ -34,21 +38,24 @@ export function aggregateOverviews(apis: ResumoFinanceiroApi[]): DashboardOvervi
       patrimonioLiquido: apis.reduce((sum, a) => sum + (a.patrimonio?.patrimonioLiquido ?? 0), 0),
     },
     receitas: {
-      mesAtual: apis.reduce((sum, a) => sum + (a.receitas?.mesAtual ?? 0), 0),
-      mesAnterior: apis.reduce((sum, a) => sum + (a.receitas?.mesAnterior ?? 0), 0),
-      variacaoPercentual: null,
+      mesAtual: soma((a) => a.receitas?.mesAtual),
+      mesAnterior: soma((a) => a.receitas?.mesAnterior),
+      variacaoPercentual: variacao(soma((a) => a.receitas?.mesAtual), soma((a) => a.receitas?.mesAnterior)),
     },
     despesas: {
-      mesAtual: apis.reduce((sum, a) => sum + (a.despesas?.mesAtual ?? 0), 0),
-      mesAnterior: apis.reduce((sum, a) => sum + (a.despesas?.mesAnterior ?? 0), 0),
-      variacaoPercentual: null,
+      mesAtual: soma((a) => a.despesas?.mesAtual),
+      mesAnterior: soma((a) => a.despesas?.mesAnterior),
+      variacaoPercentual: variacao(soma((a) => a.despesas?.mesAtual), soma((a) => a.despesas?.mesAnterior)),
     },
     cartoes: {
       quantidade: apis.reduce((sum, a) => sum + (a.cartoes?.quantidade ?? 0), 0),
       limiteTotal: apis.reduce((sum, a) => sum + (a.cartoes?.limiteTotal ?? 0), 0),
       limiteDisponivel: apis.reduce((sum, a) => sum + (a.cartoes?.limiteDisponivel ?? 0), 0),
       faturaAberta: apis.reduce((sum, a) => sum + (a.cartoes?.faturaAberta ?? 0), 0),
-      percentualDisponivel: null,
+      percentualDisponivel: (() => {
+        const total = soma((a) => a.cartoes?.limiteTotal)
+        return total > 0 ? (soma((a) => a.cartoes?.limiteDisponivel) / total) * 100 : null
+      })(),
     },
     investimentos: {
       quantidade: apis.reduce((sum, a) => sum + (a.investimentos?.quantidade ?? 0), 0),

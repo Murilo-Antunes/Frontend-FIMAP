@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, Wand2 } from 'lucide-vue-next'
+import { Wand2 } from 'lucide-vue-next'
 
 defineProps<{
   mesesAntecipados: number
@@ -15,8 +15,7 @@ const emit = defineEmits<{
   <div class="rounded-2xl bg-black text-white p-5 flex flex-col">
     <div class="flex items-center justify-between mb-3">
       <span class="flex items-center gap-2 text-xs font-medium tracking-wide text-gray-300">
-        <Sparkles class="h-4 w-4" />
-        PROJEÇÃO FIMAP AI
+        PROJEÇÃO FIMAP
       </span>
       <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium">
         {{ rotuloTaxa ?? 'CDI Estável' }}

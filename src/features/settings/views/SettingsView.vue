@@ -8,7 +8,6 @@ import {
   LogOut,
   RefreshCw,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   X,
 } from 'lucide-vue-next'
@@ -98,20 +97,7 @@ onMounted(load)
               <p class="mt-0.5 text-xs text-neutral-500">Redefina sua senha de acesso</p>
             </div>
             <ChevronRight class="size-4 text-neutral-400" aria-hidden="true" />
-          </button>
-
-          <!-- 2FA ainda não tem endpoint no backend: linha desabilitada. -->
-          <div class="flex items-center gap-4 py-4 opacity-70">
-            <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-neutral-100">
-              <Smartphone class="size-4" aria-hidden="true" />
-            </span>
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-neutral-900">Autenticação 2FA</p>
-              <p class="mt-0.5 text-xs text-neutral-500">App autenticador integrado</p>
-            </div>
-            <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600">Em breve</span>
-          </div>
-        </SettingsCard>
+          </button></SettingsCard>
 
         <OpenFinanceCard :id-usuario="idUsuario" />
       </div>
