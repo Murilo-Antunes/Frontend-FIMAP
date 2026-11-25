@@ -30,9 +30,11 @@ export function useChat() {
   const transcript = ref<HTMLElement | null>(null)
   const shouldFollowTranscript = ref(true)
   const cache = new Map<number, ChatMessage[]>()
+  const chatsWithCancelledFirstMessage = new Set<number>()
   const form = useZodForm(chatMessageSchema)
   let session = new AbortController()
   let detail: AbortController | null = null
+  let sendController: AbortController | null = null
   let generation = 0
   const selected = computed(() => chats.value.find(chat => chat.id === selectedId.value))
   const atLimit = computed(() => chats.value.length >= CHAT_LIMIT)
@@ -89,6 +91,7 @@ export function useChat() {
       if (name === null) {
         chats.value = chats.value.filter(item => item.id !== chat.id)
         cache.delete(chat.id)
+        chatsWithCancelledFirstMessage.delete(chat.id)
         if (selectedId.value === chat.id) newChat()
       } else {
         chats.value = chats.value.map(item => item.id === chat.id ? { ...item, nome: name } : item)
@@ -175,12 +178,16 @@ export function useChat() {
     if (!data) return
     const current = generation
     const signal = session.signal
+    const requestController = new AbortController()
+    sendController = requestController
+    const abortRequest = () => requestController.abort()
+    signal.addEventListener('abort', abortRequest, { once: true })
     sending.value = true
     error.value = ''
     financialActionError.value = null
     try {
       if (selectedId.value === null) {
-        const chat = await chatService.create(data.pergunta.slice(0, CHAT_NAME_LIMIT), signal)
+        const chat = await chatService.create(data.pergunta.slice(0, CHAT_NAME_LIMIT), requestController.signal)
         if (current !== generation) return
         chats.value.unshift(chat)
         selectedId.value = chat.id
@@ -188,6 +195,12 @@ export function useChat() {
       }
       const id = selectedId.value!
       const previous = [...messages.value]
+      if (chatsWithCancelledFirstMessage.has(id)) {
+        const title = data.pergunta.slice(0, CHAT_NAME_LIMIT)
+        await chatService.rename(id, title, requestController.signal)
+        if (current !== generation) return
+        chats.value = chats.value.map(chat => chat.id === id ? { ...chat, nome: title } : chat)
+      }
       messages.value = [...previous, { papel: 0, conteudo: data.pergunta }, { papel: 1, conteudo: '' }]
       draft.value = ''
       let completed = false
@@ -204,23 +217,26 @@ export function useChat() {
             completed = true
             financialActions = event.acoes_financeiras
           }
-        }, signal)
+        }, requestController.signal)
         if (current === generation && completed) {
           const answer = messages.value.at(-1)
           if (answer && financialActions) answer.acoes_financeiras = financialActions
           cache.set(id, [...messages.value])
+          chatsWithCancelledFirstMessage.delete(id)
         }
       } catch (cause) {
         if (current === generation) {
           // Um trecho recebido não comprova que o backend salvou o par.
           messages.value = previous
           draft.value = data.pergunta
-          cache.delete(id)
+          if (requestController.signal.aborted) cache.set(id, previous)
+          else cache.delete(id)
+          if (requestController.signal.aborted && previous.length === 0) chatsWithCancelledFirstMessage.add(id)
         }
         throw cause
       }
     } catch (cause) {
-      if (current === generation && !signal.aborted) {
+      if (current === generation && !signal.aborted && !requestController.signal.aborted) {
         error.value = describeError(cause)
         if (selectedId.value === null && axios.isAxiosError(cause)
           && cause.response?.status === 409 && cause.response.data?.codigo === 'CHAT_LIMITE_USUARIO') {
@@ -228,16 +244,24 @@ export function useChat() {
         }
       }
     } finally {
+      signal.removeEventListener('abort', abortRequest)
+      if (sendController === requestController) sendController = null
       if (current === generation) sending.value = false
     }
+  }
+
+  function stop() {
+    sendController?.abort()
   }
 
   watch(() => auth.usuario?.id, id => {
     generation++
     session.abort()
+    sendController?.abort()
     detail?.abort()
     session = new AbortController()
     cache.clear()
+    chatsWithCancelledFirstMessage.clear()
     chats.value = []
     selectedId.value = null
     messages.value = []
@@ -269,12 +293,12 @@ export function useChat() {
       : element.scrollHeight
     element.scrollTo({ top, behavior: 'auto' })
   })
-  onScopeDispose(() => { session.abort(); detail?.abort() })
+  onScopeDispose(() => { session.abort(); sendController?.abort(); detail?.abort() })
 
   const canSend = computed(() => auth.isAuthenticated && !sending.value && !managing.value && !confirmingFinancialAction.value
     && !loading.value && !loadingMessages.value && !historyError.value
     && (selectedId.value === null ? !atLimit.value : cache.has(selectedId.value)))
   return { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
     error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
-    confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat }
+    confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat }
 }

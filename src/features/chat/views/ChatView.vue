@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ArrowUp, Bot, MessageSquare, PanelLeftOpen, Pencil, Plus, Search, Trash2, X } from 'lucide-vue-next'
+import { ArrowUp, Bot, MessageSquare, PanelLeftOpen, Pencil, Plus, Search, Square, Trash2, X } from 'lucide-vue-next'
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import ChatAssistantMessage from '../components/ChatAssistantMessage.vue'
@@ -11,7 +11,7 @@ import type { Chat } from '../types/chat.types'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
   error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
-  confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, manageChat } = useChat()
+  confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
 const dialog = ref<HTMLDialogElement | null>(null)
@@ -176,7 +176,8 @@ function adjustFinancialAction(proposal: FinancialAction) {
           <form class="flex items-end gap-3 rounded-2xl bg-neutral-100 p-3 shadow-sm" @submit.prevent="send">
             <label for="chat-question" class="sr-only">Pergunte algo sobre suas finanças</label>
             <textarea id="chat-question" ref="question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
-            <button type="submit" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-neutral-700 disabled:opacity-30" :disabled="!canSend || !draft.trim()" :aria-label="sending ? 'Aguardando resposta' : 'Enviar mensagem'"><ArrowUp :size="21" /></button>
+            <button v-if="sending" type="button" class="flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-red-700 px-3 text-sm font-medium text-white transition hover:bg-red-800" aria-label="Parar resposta da IA" @click="stop"><Square :size="14" fill="currentColor" /> Parar</button>
+            <button v-else type="submit" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-neutral-700 disabled:opacity-30" :disabled="!canSend || !draft.trim()" aria-label="Enviar mensagem"><ArrowUp :size="21" /></button>
           </form>
           <p v-if="form.errors.pergunta" id="chat-question-error" role="alert" class="mt-2 text-xs text-red-600">{{ form.errors.pergunta }}</p>
           <p class="mt-2 text-center text-[10px] text-neutral-400">{{ sending ? 'A IA está respondendo...' : 'Enter para enviar · Shift + Enter para uma nova linha' }}</p>
