@@ -11,6 +11,10 @@ import type { Chat, ChatMessage } from '../types/chat.types'
 type PendingChatRequest = { userId: number; chatId: number; requestId: string; pergunta: string }
 const PENDING_KEY = 'fimap.chat.pending.v1'
 const LAST_CHAT_KEY = 'fimap.chat.last.v1'
+const STATUS_TIMEOUT_MS = 5_000
+const STATUS_POLL_INTERVAL_MS = 1_500
+const RECOVERY_TIMEOUT_MS = 130_000
+const STATUS_FAILURE_LIMIT = 2
 function readLastChat(userId: number): number | null {
   try {
     const value = JSON.parse(localStorage.getItem(LAST_CHAT_KEY) ?? '{}') as Record<string, unknown>
@@ -61,7 +65,8 @@ export function useChat() {
   const loading = ref(false)
   const loadingMessages = ref(false)
   const sending = ref(false)
-  const pendingRequestChatId = ref<number | null>(null)
+  const pendingRequest = ref<PendingChatRequest | null>(null)
+  const checkingStatus = ref(false)
   const confirmingFinancialAction = ref<string | null>(null)
   const financialActionError = ref<{ id: string; message: string } | null>(null)
   const managing = ref(false)
@@ -71,11 +76,15 @@ export function useChat() {
   const transcript = ref<HTMLElement | null>(null)
   const shouldFollowTranscript = ref(true)
   const cache = new Map<number, ChatMessage[]>()
+  const localPending = new Map<number, PendingChatRequest>()
+  const retryableRequests = new Map<number, PendingChatRequest>()
   const chatsWithCancelledFirstMessage = new Set<number>()
   const form = useZodForm(chatMessageSchema)
   let session = new AbortController()
   let detail: AbortController | null = null
   let sendController: AbortController | null = null
+  let statusController: AbortController | null = null
+  let disposed = false
   let generation = 0
   const selected = computed(() => chats.value.find(chat => chat.id === selectedId.value))
   const atLimit = computed(() => chats.value.length >= CHAT_LIMIT)
@@ -85,53 +94,84 @@ export function useChat() {
     ? toApiError(cause).mensagem
     : cause instanceof Error ? cause.message : toApiError(cause).mensagem
 
-  async function reconcileRequest(item: PendingChatRequest, signal: AbortSignal, showError = false) {
-    while (!signal.aborted) {
-      try {
-        const response = await chatService.requestStatus(item.requestId, signal)
-        const state = response.conteudo?.estado ?? response.estado
-        if (state === 'concluida') {
-          const result = response.conteudo?.resultado ?? response.resultado
-          if (selectedId.value === item.chatId) {
-            const latest = await chatService.messages(item.chatId, signal)
-            if (selectedId.value === item.chatId) {
-              messages.value = mergeById(latest, [result?.mensagem_usuario, result?.mensagem_assistente].filter((m): m is ChatMessage => !!m))
-              cache.set(item.chatId, messages.value)
-            }
+  function finishRequest(item: PendingChatRequest) {
+    forgetPending(item.requestId)
+    if (localPending.get(item.chatId)?.requestId === item.requestId) localPending.delete(item.chatId)
+    if (pendingRequest.value?.requestId === item.requestId) pendingRequest.value = null
+  }
+
+  function restoreQuestion(item: PendingChatRequest, message: string) {
+    messages.value = [...(cache.get(item.chatId) ?? [])]
+    if (!draft.value.trim()) draft.value = item.pergunta
+    error.value = message
+  }
+
+  function cancelStatusCheck() {
+    statusController?.abort()
+    statusController = null
+    checkingStatus.value = false
+  }
+
+  async function reconcileRequest(item: PendingChatRequest) {
+    if (disposed || statusController || pendingRequest.value?.requestId !== item.requestId) return
+    const controller = new AbortController()
+    statusController = controller
+    checkingStatus.value = true
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(RECOVERY_TIMEOUT_MS)])
+    let failures = 0
+    try {
+      while (!signal.aborted && failures < STATUS_FAILURE_LIMIT) {
+        try {
+          const querySignal = AbortSignal.any([signal, AbortSignal.timeout(STATUS_TIMEOUT_MS)])
+          const response = await chatService.requestStatus(item.requestId, querySignal).catch(cause => {
+            if (axios.isAxiosError(cause) && cause.response?.status === 404 &&
+              cause.response.data?.codigo === 'CHAT_NAO_ENCONTRADO') return null
+            throw cause
+          })
+          if (controller.signal.aborted) return
+          const state = response?.conteudo?.estado ?? response?.estado
+          if (!response || state === 'falhou' || state === 'cancelada' || state === 'expirada') {
+            if (!response) retryableRequests.set(item.chatId, item)
+            const message = state === 'cancelada' ? 'Resposta cancelada. A pergunta voltou ao rascunho.'
+              : 'A pergunta não foi concluída. Revise o rascunho e tente novamente.'
+            finishRequest(item)
+            restoreQuestion(item, message)
+            return
           }
-          forgetPending(item.requestId)
-          if (pendingRequestChatId.value === item.chatId) pendingRequestChatId.value = null
-          return
+          if (state === 'concluida') {
+            const result = response.conteudo?.resultado ?? response.resultado
+            const saved = [result?.mensagem_usuario, result?.mensagem_assistente]
+              .filter((message): message is ChatMessage => message?.id !== undefined)
+            const latest = saved.length === 2 ? mergeById(cache.get(item.chatId) ?? [], saved)
+              : await chatService.messages(item.chatId, querySignal)
+            if (controller.signal.aborted) return
+            cache.set(item.chatId, latest)
+            messages.value = latest
+            if (draft.value === item.pergunta) draft.value = ''
+            error.value = ''
+            finishRequest(item)
+            return
+          }
+          failures = state === 'gerando' ? 0 : failures + 1
+        } catch {
+          failures++
         }
-        if (state && state !== 'gerando') {
-          forgetPending(item.requestId)
-          if (pendingRequestChatId.value === item.chatId) pendingRequestChatId.value = null
-          if (showError && selectedId.value === item.chatId) error.value = response.mensagem ?? `A solicitação terminou: ${state}.`
-          return
+        if (!signal.aborted && failures < STATUS_FAILURE_LIMIT) {
+          await new Promise<void>(resolve => setTimeout(resolve, STATUS_POLL_INTERVAL_MS))
         }
-      } catch (cause) {
-        if (axios.isAxiosError(cause) && cause.response?.status === 404) {
-          forgetPending(item.requestId)
-          if (pendingRequestChatId.value === item.chatId) pendingRequestChatId.value = null
-          if (showError && selectedId.value === item.chatId) error.value = 'Não foi possível localizar esta solicitação. Ela não foi reenviada.'
-          return
-        }
-        if (signal.aborted) return
       }
-      await new Promise<void>(resolve => setTimeout(resolve, 1500))
+      if (!controller.signal.aborted) {
+        restoreQuestion(item, 'Não foi possível confirmar o envio. Verifique o status para continuar.')
+      }
+    } finally {
+      if (statusController === controller) cancelStatusCheck()
     }
   }
-  function reconcileChat(chatId: number, signal: AbortSignal) {
-    const item = readPending().find(pending => pending.userId === auth.usuario?.id && pending.chatId === chatId)
-    if (item) {
-      pendingRequestChatId.value = chatId
-      if (selectedId.value === chatId && !messages.value.some(message => message.papel === 1 && !message.conteudo)) {
-        messages.value.push({ papel: 0, conteudo: item.pergunta }, { papel: 1, conteudo: '' })
-      }
-      void reconcileRequest(item, signal, true).finally(() => {
-        if (!readPending().some(pending => pending.userId === auth.usuario?.id && pending.chatId === chatId)) pendingRequestChatId.value = null
-      })
-    }
+
+  function retryStatus() {
+    if (!pendingRequest.value || statusController) return
+    error.value = ''
+    void reconcileRequest(pendingRequest.value)
   }
 
   function updateTranscriptFollow() {
@@ -163,6 +203,8 @@ export function useChat() {
   function newChat() {
     if (sending.value || confirmingFinancialAction.value) return
     detail?.abort()
+    cancelStatusCheck()
+    pendingRequest.value = null
     selectedId.value = null
     messages.value = []
     draft.value = ''
@@ -186,6 +228,7 @@ export function useChat() {
       if (name === null) {
         chats.value = chats.value.filter(item => item.id !== chat.id)
         cache.delete(chat.id)
+        retryableRequests.delete(chat.id)
         chatsWithCancelledFirstMessage.delete(chat.id)
         if (selectedId.value === chat.id) newChat()
       } else {
@@ -203,9 +246,12 @@ export function useChat() {
   async function select(chat: Chat) {
     if (!auth.isAuthenticated || sending.value || confirmingFinancialAction.value) return
     detail?.abort()
+    cancelStatusCheck()
     const controller = new AbortController()
     detail = controller
     selectedId.value = chat.id
+    pendingRequest.value = readPending().find(item => item.userId === auth.usuario?.id && item.chatId === chat.id)
+      ?? localPending.get(chat.id) ?? null
     if (auth.usuario?.id) saveLastChat(auth.usuario.id, chat.id)
     error.value = ''
     financialActionError.value = null
@@ -214,7 +260,7 @@ export function useChat() {
     messages.value = cache.get(chat.id) ?? []
     if (cache.has(chat.id)) {
       loadingMessages.value = false
-      reconcileChat(chat.id, controller.signal)
+      retryStatus()
       return
     }
     loadingMessages.value = true
@@ -223,7 +269,7 @@ export function useChat() {
       if (!controller.signal.aborted) {
         messages.value = result
         cache.set(chat.id, result)
-        reconcileChat(chat.id, controller.signal)
+        retryStatus()
       }
     } catch (cause) {
       if (!controller.signal.aborted) {
@@ -303,10 +349,13 @@ export function useChat() {
         if (current !== generation) return
         chats.value = chats.value.map(chat => chat.id === id ? { ...chat, nome: title } : chat)
       }
-      const requestId = crypto.randomUUID()
+      const retryable = retryableRequests.get(id)
+      const requestId = retryable?.pergunta === data.pergunta ? retryable.requestId : crypto.randomUUID()
+      retryableRequests.delete(id)
       const pending: PendingChatRequest = { userId: auth.usuario!.id, chatId: id, requestId, pergunta: data.pergunta }
       savePending(pending)
-      pendingRequestChatId.value = id
+      localPending.set(id, pending)
+      pendingRequest.value = pending
       const previous = [...messages.value]
       const savedMessages = cache.get(id) ?? []
       messages.value = [...previous, { papel: 0, conteudo: data.pergunta }, { papel: 1, conteudo: '' }]
@@ -315,7 +364,7 @@ export function useChat() {
       let financialActions: FinancialAction[] | undefined
       try {
         await chatService.send(id, data.pergunta, requestId, event => {
-          if (current !== generation) return
+          if (current !== generation || requestController.signal.aborted) return
           if (event.tipo === 'trecho') {
             const answer = messages.value[messages.value.length - 1]
             if (answer) answer.conteudo += event.conteudo
@@ -328,18 +377,17 @@ export function useChat() {
             if (saved.length) messages.value = mergeById(messages.value.slice(0, -2), saved)
           }
         }, requestController.signal)
-        if (current === generation && completed) {
+        if (current === generation && completed && !requestController.signal.aborted) {
           const answer = messages.value.at(-1)
           if (answer && financialActions) answer.acoes_financeiras = financialActions
           cache.set(id, mergeById(savedMessages, messages.value.slice(previous.length)))
           chatsWithCancelledFirstMessage.delete(id)
-          forgetPending(requestId)
-          if (pendingRequestChatId.value === id) pendingRequestChatId.value = null
+          finishRequest(pending)
         }
       } catch (cause) {
         if (current === generation) {
           // Falha/EOF é ambígua: preserve a solicitação para consulta pelo mesmo UUID.
-          void reconcileRequest(pending, session.signal, true)
+          void reconcileRequest(pending)
         }
         throw cause
       }
@@ -359,12 +407,19 @@ export function useChat() {
   }
 
   function stop() {
-    const pending = readPending().find(item => item.userId === auth.usuario?.id && item.chatId === selectedId.value)
-    if (!pending) return
-    void chatService.cancel(pending.requestId, session.signal).then(() => {
+    const pending = pendingRequest.value
+    if (!pending) {
       sendController?.abort()
-      void reconcileRequest(pending, session.signal, true)
-    }).catch(cause => { error.value = describeError(cause) })
+      return
+    }
+    const sendingRequest = sendController
+    void chatService.cancel(pending.requestId, session.signal).then(() => {
+      if (pendingRequest.value?.requestId !== pending.requestId) return
+      sendingRequest?.abort()
+      void reconcileRequest(pending)
+    }).catch(cause => {
+      if (pendingRequest.value?.requestId === pending.requestId) error.value = describeError(cause)
+    })
   }
 
   watch(() => auth.usuario?.id, id => {
@@ -372,8 +427,12 @@ export function useChat() {
     session.abort()
     sendController?.abort()
     detail?.abort()
+    cancelStatusCheck()
+    pendingRequest.value = null
     session = new AbortController()
     cache.clear()
+    localPending.clear()
+    retryableRequests.clear()
     chatsWithCancelledFirstMessage.clear()
     chats.value = []
     selectedId.value = null
@@ -407,16 +466,21 @@ export function useChat() {
     element.scrollTo({ top, behavior: 'auto' })
   })
   // Navegar desmonta a tela, mas não encerra o POST: o backend continua a solicitação.
-  onScopeDispose(() => { detail?.abort() })
+  onScopeDispose(() => {
+    disposed = true
+    detail?.abort()
+    cancelStatusCheck()
+  })
 
   const canSend = computed(() => auth.isAuthenticated && !sending.value
-    && !(selectedId.value !== null && pendingRequestChatId.value === selectedId.value)
+    && !pendingRequest.value
     && !managing.value && !confirmingFinancialAction.value
     && !loading.value && !loadingMessages.value && !historyError.value
     && (selectedId.value === null ? !atLimit.value : cache.has(selectedId.value)))
-  const responding = computed(() => sending.value
-    || (selectedId.value !== null && pendingRequestChatId.value === selectedId.value))
+  const responding = computed(() => sending.value || checkingStatus.value)
+  const canRetryStatus = computed(() => pendingRequest.value !== null && !responding.value && !loadingMessages.value)
   return { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
     error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
-    confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat, responding }
+    confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat,
+    responding, canRetryStatus, retryStatus }
 }

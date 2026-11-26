@@ -8,18 +8,18 @@ export const metasRoutes: RouteRecordRaw[] = [
     path: 'metas',
     name: 'metas',
     component: () => import('@/features/metas/views/MetasListView.vue'),
-    meta: { requiresAuth: true, requiresConnection: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
   {
     path: 'metas/nova',
     name: 'metas-criar',
     component: () => import('@/features/metas/views/MetaCreateView.vue'),
-    meta: { requiresAuth: true, requiresConnection: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
   {
     path: 'metas/:id',
     name: 'metas-editar',
     component: () => import('@/features/metas/views/MetaEditView.vue'),
-    meta: { requiresAuth: true, requiresConnection: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
 ]

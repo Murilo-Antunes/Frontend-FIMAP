@@ -1,9 +1,7 @@
 import { http } from '@/lib/api/http'
 import {
   recommendationPageSchema,
-  recommendationPreviewSchema,
   type RecommendationPage,
-  type RecommendationPreview,
   type RecommendationType,
 } from '../types/recommendations.types'
 
@@ -25,9 +23,6 @@ export async function listRecommendations(options: {
   return result.data
 }
 
-export async function createRecommendationPreview(signal?: AbortSignal): Promise<RecommendationPreview> {
-  const { data } = await http.post<unknown>('/v1/ia/recomendacoes/testar', {}, { signal })
-  const result = recommendationPreviewSchema.safeParse(data)
-  if (!result.success) throw new Error('Resposta do teste de recomendações inválida.')
-  return result.data
+export async function deleteRecommendation(id: number, signal?: AbortSignal): Promise<void> {
+  await http.delete(`/v1/ia/recomendacoes/${id}`, { signal })
 }

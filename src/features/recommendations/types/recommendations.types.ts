@@ -9,11 +9,13 @@ const recommendationSchema = z.object({
   id: z.int(),
   titulo: z.string(),
   mensagem: z.string(),
+  acao: z.string().optional(),
   area: z.enum(['nucleo', 'investimentos']),
   tipo: recommendationTypeSchema,
   tipoLabel: z.string(),
   ativa: z.boolean(),
   expiraEm: timestampSchema,
+  geradaEm: timestampSchema.optional(),
   simulada: z.boolean().optional(),
   origem: originSchema.optional(),
 })
@@ -25,20 +27,9 @@ export const recommendationPageSchema = z.object({
   resumo: z.object({ total: z.int().nonnegative(), ativas: z.int().nonnegative() }),
 })
 
-export const recommendationPreviewSchema = z.object({
-  versao: z.literal(1),
-  simulado: z.literal(true),
-  recomendacao: recommendationSchema.extend({
-    id: z.int().negative(),
-    simulada: z.literal(true),
-    origem: originSchema,
-  }),
-})
-
 export type RecommendationType = z.infer<typeof recommendationTypeSchema>
 export type Recommendation = z.infer<typeof recommendationSchema>
 export type RecommendationPage = z.infer<typeof recommendationPageSchema>
-export type RecommendationPreview = z.infer<typeof recommendationPreviewSchema>
 
 export const PREVIEW_CHARACTERS = 180
 

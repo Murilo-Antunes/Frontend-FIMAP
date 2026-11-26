@@ -7,7 +7,8 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 ## Oportunidades da IA
 
 A página `/recomendacoes` reúne todas as recomendações do usuário, atuais e antigas.
-O cartão de orientação geral fica no topo e é atualizado pelo back-end a cada rodada com dados válidos.
+A rotina do back-end analisa a visão financeira do FIMAP a cada 10 minutos por padrão. A página consulta os cartões salvos ao abrir e enquanto está visível.
+A página mostra o histórico do mais novo ao mais antigo. O back-end salva outra orientação geral quando mudam os dados do resumo ou a própria orientação. O horário no cartão indica quando ele foi gerado.
 Os cartões aparecem somente nessa página, com tipo e prévia de até 180 caracteres.
 Clicar ou pressionar Enter no cartão abre a mensagem completa em um diálogo acessível.
 Não existem botões de ação dentro dos cartões.
