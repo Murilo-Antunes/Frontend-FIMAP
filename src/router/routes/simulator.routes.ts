@@ -15,18 +15,18 @@ export const simulatorRoutes: RouteRecordRaw[] = [
     path: '/simulacoes',
     name: 'simulations-history',
     component: () => import('@/features/simulator/views/SimulationsHistoryView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
   {
     path: '/simulacoes/:tipo(investimentos|amortizacoes)/nova',
     name: 'simulator-new',
     component: () => import('@/features/simulator/views/SimulatorView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
   {
     path: '/simulacoes/:tipo(investimentos|amortizacoes)/:id(\\d+)',
     name: 'simulator-edit',
     component: () => import('@/features/simulator/views/SimulatorView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresConnection: false },
   },
 ]

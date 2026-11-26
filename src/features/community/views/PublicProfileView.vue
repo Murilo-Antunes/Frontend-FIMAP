@@ -93,7 +93,7 @@ async function carregar(username: string) {
       return
     }
 
-    // Os totais do perfil vêm das listas atuais de relacionamento.
+    // Os totais do perfil vÃªm das listas atuais de relacionamento.
     const [seguidores, seguindoLista] = await Promise.all([
       listarSeguidores(dadosPerfil.id),
       listarSeguindo(dadosPerfil.id),

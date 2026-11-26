@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ArrowUp, Bot, MessageSquare, PanelLeftOpen, Pencil, Plus, Search, Square, Trash2, X } from 'lucide-vue-next'
 import FormAlert from '@/components/shared/FormAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
@@ -11,7 +12,8 @@ import type { Chat } from '../types/chat.types'
 
 const { chats, selected, messages, draft, search, loading, loadingMessages, sending, historyError,
   error, transcript, updateTranscriptFollow, filtered, form, canSend, atLimit, managing, managementError,
-  confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat, responding } = useChat()
+  confirmingFinancialAction, financialActionError, confirmFinancialAction, load, select, newChat, send, stop, manageChat,
+  responding, canRetryStatus, retryStatus } = useChat()
 const historyOpen = ref(true)
 const auth = useAuthStore()
 const dialog = ref<HTMLDialogElement | null>(null)
@@ -22,6 +24,17 @@ const busy = computed(() => sending.value || managing.value || confirmingFinanci
 const cannotCreate = computed(() => !auth.isAuthenticated || loading.value || !!historyError.value
   || busy.value || atLimit.value)
 const limitMessage = 'Você atingiu o limite de conversas. Exclua uma para criar outra.'
+const route = useRoute()
+const suggestedQuestions = {
+  comparar_internet: 'Quero comparar meu plano de internet com outras ofertas. Me ajude a calcular o custo total em 12 meses com mensalidade, instalação e multa de fidelidade. Quais dados preciso trazer?',
+  comparar_telefonia: 'Quero comparar meu plano de telefonia com outras ofertas. Me ajude a avaliar franquia, cobranças extras e custo total em 12 meses. Quais dados preciso trazer?',
+  revisar_assinatura: 'Me ajude a avaliar se vale manter uma assinatura, trocar de plano ou pausar. Quero comparar preço, frequência de uso e recursos que realmente uso.',
+} as const
+watch([() => route.query.assunto, () => auth.usuario?.id], ([topic, user]) => {
+  if (user && !draft.value.trim() && typeof topic === 'string' && Object.hasOwn(suggestedQuestions, topic)) {
+    draft.value = suggestedQuestions[topic as keyof typeof suggestedQuestions]
+  }
+}, { immediate: true })
 
 const financialActionsByMessage = computed(() => {
   const latest = new Map<string, { index: number; action: FinancialAction }>()
@@ -175,12 +188,13 @@ function adjustFinancialAction(proposal: FinancialAction) {
           <p v-if="!historyOpen && atLimit && !selected" class="mb-3 text-center text-xs text-neutral-500">{{ limitMessage }}</p>
           <form class="flex items-end gap-3 rounded-2xl bg-neutral-100 p-3 shadow-sm" @submit.prevent="send">
             <label for="chat-question" class="sr-only">Pergunte algo sobre suas finanças</label>
-            <textarea id="chat-question" ref="question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
+            <textarea id="chat-question" ref="question" v-model="draft" rows="2" maxlength="2000" placeholder="Pergunte algo sobre suas finanças..." class="min-w-0 flex-1 resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-neutral-400 disabled:opacity-50" :disabled="!canSend && !canRetryStatus" :readonly="canRetryStatus" :aria-invalid="!!form.errors.pergunta" :aria-describedby="form.errors.pergunta ? 'chat-question-error' : undefined" @input="form.clearError('pergunta')" @keydown="onKeydown" />
             <button v-if="responding" type="button" class="flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-red-700 px-3 text-sm font-medium text-white transition hover:bg-red-800" aria-label="Parar resposta da IA" @click="stop"><Square :size="14" fill="currentColor" /> Parar</button>
+            <button v-else-if="canRetryStatus" type="button" class="h-10 shrink-0 rounded-full bg-black px-3 text-sm font-medium text-white transition hover:bg-neutral-700" @click="retryStatus">Verificar status</button>
             <button v-else type="submit" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-neutral-700 disabled:opacity-30" :disabled="!canSend || !draft.trim()" aria-label="Enviar mensagem"><ArrowUp :size="21" /></button>
           </form>
           <p v-if="form.errors.pergunta" id="chat-question-error" role="alert" class="mt-2 text-xs text-red-600">{{ form.errors.pergunta }}</p>
-          <p class="mt-2 text-center text-[10px] text-neutral-400">{{ responding ? 'A IA está respondendo...' : 'Enter para enviar · Shift + Enter para uma nova linha' }}</p>
+          <p class="mt-2 text-center text-[10px] text-neutral-400">{{ responding ? 'Aguardando resposta...' : canRetryStatus ? 'Sua pergunta está no rascunho.' : 'Enter para enviar · Shift + Enter para uma nova linha' }}</p>
         </div>
       </div>
     </section>

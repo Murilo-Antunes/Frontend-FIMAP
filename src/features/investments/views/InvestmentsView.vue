@@ -6,8 +6,6 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import ErrorState from '@/components/shared/ErrorState.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 import PatrimonyCard from '../components/PatrimonyCard.vue'
-import EvolutionChart from '../components/EvolutionChart.vue'
-import RecommendationCard from '@/features/dashboard/components/RecommendationCard.vue'
 import AllocationCard from '../components/AllocationCard.vue'
 import AssetPreviewCard from '../components/AssetPreviewCard.vue'
 import { useInvestmentsData } from '../composables/useInvestmentsData'
@@ -45,9 +43,8 @@ const preview = computed(() => summary.value?.assets.slice(0, PREVIEW_COUNT) ?? 
 
       <PatrimonyCard :summary="summary" />
 
-      <div class="grid items-start gap-6 lg:has-[>aside]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div class="grid items-start gap-6">
         <AllocationCard :groups="summary.groups" />
-        <RecommendationCard area="investimentos" />
       </div>
 
       <section>
