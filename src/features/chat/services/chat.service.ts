@@ -1,7 +1,7 @@
 import { http } from '@/lib/api/http'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
-import type { Chat, ChatEvent, ChatMessage, ChatResponse } from '../types/chat.types'
+import type { Chat, ChatEvent, ChatMessage, ChatRequestStatus, ChatResponse } from '../types/chat.types'
 import { financialActionSchema, parseFinancialActions, type FinancialAction } from '../schemas/financial-action.schemas'
 import { readChatStream } from './chat-stream'
 
@@ -62,10 +62,18 @@ export const chatService = {
     const { data } = await http.delete<ChatResponse<unknown>>(`${BASE}/apagar-chat/${id}`, { signal })
     requireSuccess(data)
   },
-  async send(id: number, pergunta: string, onEvent: (event: ChatEvent) => void, signal: AbortSignal) {
+  async requestStatus(requestId: string, signal?: AbortSignal): Promise<ChatRequestStatus> {
+    const { data } = await http.get<ChatRequestStatus>(`${BASE}/requisicoes/${encodeURIComponent(requestId)}`, { signal })
+    return data
+  },
+  async cancel(requestId: string, signal?: AbortSignal): Promise<ChatRequestStatus> {
+    const { data } = await http.post<ChatRequestStatus>(`${BASE}/requisicoes/${encodeURIComponent(requestId)}/cancelar`, {}, { signal })
+    return data
+  },
+  async send(id: number, pergunta: string, requestId: string, onEvent: (event: ChatEvent) => void, signal: AbortSignal) {
     const idUsuario = requireUserId()
     const response = await http.post<ReadableStream<Uint8Array>>(`${BASE}/mensagens`, {
-      id_chat: id, id_usuario: idUsuario, pergunta, requisicao_id: crypto.randomUUID(),
+      id_chat: id, id_usuario: idUsuario, pergunta, requisicao_id: requestId,
     }, { adapter: 'fetch', responseType: 'stream', timeout: 130_000, signal }).catch(async (cause: unknown) => {
       if (axios.isAxiosError(cause) && cause.response?.data instanceof ReadableStream) {
         try { cause.response.data = await new Response(cause.response.data).json() }

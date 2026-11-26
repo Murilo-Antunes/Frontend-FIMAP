@@ -50,6 +50,10 @@ function buildSummary(api: ResumoFinanceiroApi): DashboardSummary {
 
   // Movimentação líquida do mês (entradas - saídas). NÃO é a variação do patrimônio.
   const saldoDoMes = receita - despesa
+  const percentualVariacao = (valorAtual: number, valorAnterior: number) =>
+    valorAnterior > 0 ? ((valorAtual - valorAnterior) / valorAnterior) * 100 : null
+  const percentualDisponivel = api.cartoes.percentualDisponivel ??
+    (api.cartoes.limiteTotal > 0 ? (api.cartoes.limiteDisponivel / api.cartoes.limiteTotal) * 100 : null)
 
   return {
     patrimonio: {
@@ -63,20 +67,20 @@ function buildSummary(api: ResumoFinanceiroApi): DashboardSummary {
     },
     receita_mensal: {
       valor: round(receita, 2),
-      variacao_percentual: api.receitas.variacaoPercentual,
+      variacao_percentual: api.receitas.variacaoPercentual ?? percentualVariacao(receita, receitaAnterior),
       // Quanto da receita do mês anterior já foi alcançada (máx. 100)
       progresso: receitaAnterior > 0 ? round(clampPercent((receita / receitaAnterior) * 100)) : receita > 0 ? 100 : 0,
     },
     despesas: {
       valor: round(despesa, 2),
-      variacao_percentual: api.despesas.variacaoPercentual,
+      variacao_percentual: api.despesas.variacaoPercentual ?? percentualVariacao(despesa, num(api.despesas.mesAnterior)),
       // Quanto da receita do mês já foi comprometido com despesas (máx. 100)
       progresso: receita > 0 ? round(clampPercent((despesa / receita) * 100)) : despesa > 0 ? 100 : 0,
     },
     limite_cartoes: {
       limite_total: num(api.cartoes.limiteTotal),
       disponivel: num(api.cartoes.limiteDisponivel),
-      percentual_disponivel: api.cartoes.percentualDisponivel,
+      percentual_disponivel: percentualDisponivel,
       fatura_aberta: num(api.cartoes.faturaAberta),
     },
     investido: {

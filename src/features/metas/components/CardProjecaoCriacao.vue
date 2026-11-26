@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Sparkles } from 'lucide-vue-next'
 import type { ProjecaoIA } from '../composables/useProjecaoIA'
 import { formatarMoeda, formatarMesAno } from '../utils/metas.utils'
 
@@ -20,8 +19,7 @@ const percentualAtual = computed(() =>
   <div class="rounded-2xl bg-black text-white p-5">
     <div class="flex items-center justify-between mb-3">
       <span class="flex items-center gap-2 text-xs font-medium tracking-wide text-gray-300">
-        <Sparkles class="h-4 w-4" />
-        PROJEÇÃO COM IA FIMAP
+        PROJEÇÃO FIMAP
       </span>
       <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium">
         {{ Math.round(projecao.percentualCdiUsado * 100) }}% CDI

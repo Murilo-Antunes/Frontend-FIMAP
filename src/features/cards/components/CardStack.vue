@@ -92,6 +92,7 @@ function descricao(c: Cartao): string {
         <CardFace
           :cartao="cartao"
           :titular="titular"
+          :mostrar-vencimento="false"
           :compacto="estaCompacto(indice)"
           :class="{ 'is-active': ativo === indice }"
           :style="cartaoTransicaoId === cartao.id ? { viewTransitionName: 'cartao-ativo' } : undefined"

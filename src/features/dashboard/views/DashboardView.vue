@@ -130,11 +130,18 @@ async function loadDashboard() {
 
 /** null = sem base de comparação (ex.: ainda não existe o mês anterior). */
 const percent = (value: number | null, signed = false) =>
-  value === null ? '—' : formatPercent(value, { signed })
+  value === null ? '' : formatPercent(value, { signed })
 
 // Card de cartões: sem limite informado pela instituição, mostra a fatura em aberto
 const cards = computed(() => overview.value?.summary.limite_cartoes)
 const hasCardLimit = computed(() => (cards.value?.limite_total ?? 0) > 0)
+const availableCardPercent = computed(() => {
+  const cardData = cards.value
+  if (!cardData) return null
+  return cardData.percentual_disponivel ?? (cardData.limite_total > 0
+    ? (cardData.disponivel / cardData.limite_total) * 100
+    : null)
+})
 
 onMounted(loadDashboard)
 onBeforeUnmount(() => clearTimeout(pollTimer))
@@ -223,7 +230,7 @@ onBeforeUnmount(() => clearTimeout(pollTimer))
           :icon="CreditCard"
           :value="formatNumber(hasCardLimit ? cards.disponivel : cards.fatura_aberta)"
           :footer-label="hasCardLimit ? 'Disponível' : 'Limite não informado'"
-          :footer-value="hasCardLimit ? percent(cards.percentual_disponivel) : '—'"
+          :footer-value="hasCardLimit ? percent(availableCardPercent) : ''"
           :progress="hasCardLimit ? (cards.percentual_disponivel ?? 0) : 0"
         />
         <SummaryCard

@@ -7,6 +7,7 @@ import { MAIN_NAV, SIDEBAR_NAV, SIDEBAR_ID, type NavItem } from '@/config/naviga
 import { navAttrs } from './navAttrs'
 import { useAuthStore } from '@/stores/auth.store'
 import { useNotificacoesStore } from '@/stores/notificacoes.store'
+import { useSocialProfileStore } from '@/stores/social-profile.store'
 
 defineProps<{ sidebarOpen: boolean }>()
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 const route = useRoute()
 const authStore = useAuthStore()
 const notificacoesStore = useNotificacoesStore()
+const socialProfileStore = useSocialProfileStore()
 
 const isSidebarRoute = computed(() => {
   return SIDEBAR_NAV.some(item => item.to && route.path.startsWith(item.to))
@@ -99,7 +101,7 @@ onMounted(() => {
       <div class="flex items-center gap-1">
         <!-- NOVO: só aparece dentro da área Social; leva ao próprio perfil (Perfil Comunidade). -->
         <RouterLink
-          v-if="isSocialSection"
+          v-if="isSocialSection && socialProfileStore.hasSocialProfile()"
           :to="{ name: 'community-profile' }"
           class="rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
           aria-label="Meu perfil na comunidade"

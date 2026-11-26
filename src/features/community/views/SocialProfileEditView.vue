@@ -380,6 +380,7 @@ const fieldInput = 'h-12 w-full min-w-0 bg-transparent text-neutral-900 outline-
   <div :class="ui.page">
   <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
     <button
+      v-if="store.hasSocialProfile()"
       type="button"
       aria-label="Voltar para a página anterior"
       class="mb-3 rounded-lg p-2 text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"

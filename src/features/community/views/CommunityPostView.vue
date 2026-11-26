@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { isAxiosError, isCancel } from 'axios'
-import { AlertCircle, ArrowLeft, ArrowUp, Loader2, MessageSquare, RefreshCw, X } from 'lucide-vue-next'
+import { AlertCircle, ArrowLeft, ArrowUp, Bookmark, Loader2, MessageSquare, RefreshCw, X } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSocialProfileStore } from '@/stores/social-profile.store'
 import { toApiError } from '@/lib/api/types/api-error'
@@ -30,6 +30,9 @@ const errorMessage = ref('')
 const liked = ref(false)
 const likes = ref(0)
 const likeBusy = ref(false)
+const saved = ref(false)
+const saveBusy = ref(false)
+const checkingSaved = ref(true)
 
 const comments = ref<Comentario[]>([])
 const commentsStatus = ref<'loading' | 'ready' | 'error'>('loading')
@@ -115,6 +118,21 @@ async function toggleLike(): Promise<void> {
   }
 }
 
+async function toggleSaved(): Promise<void> {
+  if (!post.value || saveBusy.value) return
+  const previous = saved.value
+  saveBusy.value = true
+  saved.value = !previous
+
+  try {
+    saved.value = await postService.toggleSaved(post.value.id)
+  } catch {
+    saved.value = previous
+  } finally {
+    saveBusy.value = false
+  }
+}
+
 function startReply(comment: Comentario | null): void {
   replyingTo.value = comment
   sendError.value = ''
@@ -179,6 +197,8 @@ async function load(): Promise<void> {
   status.value = 'loading'
   errorMessage.value = ''
   post.value = null
+  saved.value = false
+  checkingSaved.value = true
   comments.value = []
   replyingTo.value = null
   draft.value = ''
@@ -189,6 +209,18 @@ async function load(): Promise<void> {
     post.value = await postService.getPost(props.postId, auth.usuario?.id??0, signal)
     liked.value = post.value.curtiu
     likes.value = post.value.total_curtidas
+    if (post.value.salvo !== undefined) {
+      saved.value = post.value.salvo
+      checkingSaved.value = false
+    } else {
+      try {
+        saved.value = await postService.isSaved(post.value.id)
+      } catch {
+        // A falha na consulta não impede salvar o post.
+      } finally {
+        checkingSaved.value = false
+      }
+    }
     status.value = 'ready'
     void loadComments(signal)
   } catch (error) {
@@ -308,6 +340,17 @@ onBeforeUnmount(() => controller?.abort())
         <!-- Ações -->
         <div class="flex items-center gap-8 pt-1">
           <LikeButton variant="label" :liked="liked" :count="likes" :busy="likeBusy" @toggle="toggleLike" />
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-neutral-900 outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-black/30 disabled:opacity-60"
+            :aria-label="saved ? 'Remover post dos salvos' : 'Salvar post'"
+            :aria-pressed="saved"
+            :disabled="saveBusy || checkingSaved"
+            @click="toggleSaved"
+          >
+            <Bookmark :class="['size-[18px]', saved ? 'fill-current text-neutral-900' : '']" aria-hidden="true" />
+            {{ saved ? 'Salvo' : 'Salvar' }}
+          </button>
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-neutral-900 outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-black/30"

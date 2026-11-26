@@ -108,14 +108,18 @@ const router = useRouter()
 const metaDraft = useMetaDraftStore()
 
 /** Leva os dados da simulação (mesmo sem salvar) para a tela de criação de meta, já preenchida. */
-function createGoal(): void {
+async function createGoal(): Promise<void> {
   const validation = validateInvestment(form)
-  if (!validation.ok || !result.value) {
+  const simulationResult = result.value
+  if (!validation.ok || !simulationResult) {
     errors.value = validation.ok ? {} : validation.errors
     return
   }
   errors.value = {}
-  metaDraft.set(investmentToMetaDraft(form, result.value))
+  const saved = await save(validation.payload, props.record?.id ?? null)
+  if (!saved) return
+  emit('saved', saved)
+  metaDraft.set(investmentToMetaDraft(form, simulationResult))
   void router.push({ name: META_CREATE_ROUTE })
 }
 
@@ -210,7 +214,7 @@ async function submit(): Promise<void> {
 
       <SimulationActions
         primary-label="Criar Meta a partir desta Simulação"
-        :primary-disabled="result === null"
+        :primary-disabled="result === null || saving"
         :editing="editing"
         :saving="saving"
         :can-save="canSave"

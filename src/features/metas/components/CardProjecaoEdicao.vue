@@ -1,52 +1,55 @@
-<script setup lang="ts">
-import { Sparkles, Wand2 } from 'lucide-vue-next'
+﻿<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { formatarMoeda } from '../utils/metas.utils'
 
-defineProps<{
-  mesesAntecipados: number
+const props = defineProps<{
+  aporteMensal: number
+  mesesProjetados: number
   rotuloTaxa?: string
 }>()
 
-const emit = defineEmits<{
-  simular: []
-}>()
+const emit = defineEmits<{ 'update:aporteMensal': [value: number] }>()
+const simulando = ref(false)
+const aporteInput = ref(props.aporteMensal)
+const aporteFormatado = computed(() => formatarMoeda(props.aporteMensal))
+
+watch(() => props.aporteMensal, (value) => { aporteInput.value = value })
 </script>
 
 <template>
-  <div class="rounded-2xl bg-black text-white p-5 flex flex-col">
-    <div class="flex items-center justify-between mb-3">
-      <span class="flex items-center gap-2 text-xs font-medium tracking-wide text-gray-300">
-        <Sparkles class="h-4 w-4" />
-        PROJEÇÃO FIMAP AI
-      </span>
+  <div class="rounded-2xl bg-black p-5 text-white">
+    <div class="mb-3 flex items-center justify-between">
+      <span class="text-xs font-medium tracking-wide text-gray-300">PROJEÇÃO FIMAP</span>
       <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium">
         {{ rotuloTaxa ?? 'CDI Estável' }}
       </span>
     </div>
 
-    <p class="text-sm text-gray-200 leading-relaxed">
-      Com os ajustes atuais, você antecipará sua meta em
-      <span class="underline underline-offset-2">{{ mesesAntecipados }} meses</span>
-      em relação ao plano inicial.
+    <p class="text-sm leading-relaxed text-gray-200">
+      Com um aporte mensal de <span class="font-semibold">{{ aporteFormatado }}</span>,
+      você alcançará sua meta em aproximadamente
+      <span class="underline underline-offset-2">{{ mesesProjetados }} {{ mesesProjetados === 1 ? 'mês' : 'meses' }}</span>.
     </p>
 
-    <svg viewBox="0 0 300 70" class="mt-4 h-16 w-full" preserveAspectRatio="none">
-      <polyline
-        points="0,62 60,55 120,45 180,28 240,12 300,4"
-        fill="none"
-        stroke="white"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+    <label v-if="simulando" class="mt-4 block text-xs text-gray-300">
+      Novo aporte mensal (R$)
+      <input
+        v-model.number="aporteInput"
+        type="number"
+        min="0"
+        step="0.01"
+        class="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-white"
+        @input="emit('update:aporteMensal', Math.max(0, Number(aporteInput) || 0))"
       />
-    </svg>
+    </label>
 
     <button
       type="button"
-      class="mt-4 flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-medium text-black hover:bg-gray-100"
-      @click="emit('simular')"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-medium text-black hover:bg-gray-100"
+      :aria-expanded="simulando"
+      @click="simulando = !simulando"
     >
-      <Wand2 class="h-4 w-4" />
-      Simular Novo Aporte com IA
+      {{ simulando ? 'Fechar simulação' : 'Simular novo aporte' }}
     </button>
   </div>
 </template>

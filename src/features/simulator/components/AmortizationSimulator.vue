@@ -138,14 +138,18 @@ const router = useRouter()
 const metaDraft = useMetaDraftStore()
 
 /** Leva os dados da simulação (mesmo sem salvar) para a tela de criação de meta, já preenchida. */
-function createGoal(): void {
+async function createGoal(): Promise<void> {
   const validation = validateAmortization(form)
-  if (!validation.ok || !result.value) {
+  const simulationResult = result.value
+  if (!validation.ok || !simulationResult) {
     errors.value = validation.ok ? {} : validation.errors
     return
   }
   errors.value = {}
-  metaDraft.set(amortizationToMetaDraft(form, result.value))
+  const saved = await save(validation.payload, props.record?.id ?? null)
+  if (!saved) return
+  emit('saved', saved)
+  metaDraft.set(amortizationToMetaDraft(form, simulationResult))
   void router.push({ name: META_CREATE_ROUTE })
 }
 
@@ -367,7 +371,7 @@ const modeGroup = useId()
       <div class="mt-auto">
         <SimulationActions
           primary-label="Criar Plano de Amortização"
-          :primary-disabled="result === null"
+          :primary-disabled="result === null || saving"
           :editing="editing"
           :saving="saving"
           :can-save="canSave"

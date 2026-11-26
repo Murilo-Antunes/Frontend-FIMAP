@@ -38,6 +38,7 @@ const contas = ref<ContaRendimento[]>([])
 const nomeObjetivo = ref('')
 const dataAlvo = ref('')
 const aporteMensal = ref<number>(0)
+const aporteSimulado = ref<number>(0)
 const categoriaId = ref<number | null>(null)
 const valorDesejado = ref<number>(0)
 const idContaVinculada = ref<number | null>(null)
@@ -48,26 +49,22 @@ const percentual = computed(() =>
 const mesesRestantesAtual = computed(() => (dataAlvo.value ? mesesRestantes(monthInputParaData(dataAlvo.value)) : 0))
 const pausada = computed(() => metaOriginal.value?.status === 0)
 
-const projecaoAtualizada = computed(() =>
-  calcularProjecaoIA({
-    valorAtual: metaOriginal.value?.valorTotal ?? 0,
+const projecaoSimulada = computed(() => {
+  if (!metaOriginal.value) return null
+  return calcularProjecaoIA({
+    valorAtual: metaOriginal.value.valorTotal,
     valorDesejado: valorDesejado.value,
-    aporteMensal: aporteMensal.value,
+    aporteMensal: aporteSimulado.value,
     percentualCdi: contas.value.find((c) => c.id === idContaVinculada.value)?.percentualCdi,
-  }),
-)
-const projecaoOriginal = computed(() =>
-  metaOriginal.value
-    ? calcularProjecaoIA({
-        valorAtual: metaOriginal.value.valorTotal,
-        valorDesejado: metaOriginal.value.valorDesejado,
-        aporteMensal: metaOriginal.value.aporteMensal,
-        percentualCdi: contas.value.find((c) => c.id === metaOriginal.value?.idContaVinculada)?.percentualCdi,
-      })
-    : null,
-)
-const mesesAntecipados = computed(() =>
-  Math.max((projecaoOriginal.value?.mesesEstimados ?? 0) - projecaoAtualizada.value.mesesEstimados, 0),
+  })
+})
+const exibirProjecao = computed(() =>
+  Boolean(
+    metaOriginal.value &&
+    valorDesejado.value > metaOriginal.value.valorTotal &&
+    projecaoSimulada.value &&
+    projecaoSimulada.value.mesesEstimados < 600,
+  ),
 )
 
 async function carregar() {
@@ -88,6 +85,7 @@ async function carregar() {
     nomeObjetivo.value = meta.nome
     dataAlvo.value = dataParaMonthInput(meta.dataAlvo)
     aporteMensal.value = meta.aporteMensal
+    aporteSimulado.value = meta.aporteMensal
     categoriaId.value = meta.idCategoria
     valorDesejado.value = meta.valorDesejado
     idContaVinculada.value = meta.idContaVinculada
@@ -102,6 +100,10 @@ onMounted(carregar)
 
 function adicionarValor(valor: number) {
   valorDesejado.value = Number(valorDesejado.value) + valor
+}
+
+function subtrairValor(valor: number) {
+  valorDesejado.value = Math.max(0, Number(valorDesejado.value) - valor)
 }
 
 function aoAtualizarCdi({ id, percentualCdi }: { id: number; percentualCdi: number }) {
@@ -216,16 +218,25 @@ async function excluir() {
               step="0.01"
               class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-lg font-semibold focus:border-gray-400 focus:outline-none"
             />
-            <div class="mt-2 flex gap-2">
+            <div class="mt-2 flex flex-wrap items-center gap-2">
               <span class="text-xs text-gray-400 self-center">Ajustar:</span>
               <button
                 v-for="chip in [1000, 5000, 10000]"
-                :key="chip"
+                :key="`add-${chip}`"
                 type="button"
                 class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
                 @click="adicionarValor(chip)"
               >
                 + R$ {{ chip.toLocaleString('pt-BR') }}
+              </button>
+              <button
+                v-for="chip in [1000, 5000, 10000]"
+                :key="`subtract-${chip}`"
+                type="button"
+                class="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                @click="subtrairValor(chip)"
+              >
+                − R$ {{ chip.toLocaleString('pt-BR') }}
               </button>
             </div>
           </div>
@@ -266,7 +277,12 @@ async function excluir() {
 
       <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2">
-          <CardProjecaoEdicao :meses-antecipados="mesesAntecipados" @simular="carregar" />
+          <CardProjecaoEdicao
+            v-if="exibirProjecao && projecaoSimulada"
+            :aporte-mensal="aporteSimulado"
+            :meses-projetados="projecaoSimulada.mesesEstimados"
+            @update:aporte-mensal="aporteSimulado = $event"
+          />
         </div>
 
         <div class="space-y-3">
